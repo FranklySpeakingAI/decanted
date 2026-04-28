@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------------------------------
+   Decanted design tokens
+   ------------------------------------------------------------------------- */
+@theme inline {
+  /* Brand colours */
+  --color-wine:        #7B2D3D;
+  --color-wine-dark:   #2C0A0E;
+  --color-wine-light:  #C4768A;
+  --color-gold:        #C9A96E;
+  --color-gold-light:  #E5C990;
+  --color-parchment:   #F7F3EE;
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* -------------------------------------------------------------------------
+   Base reset
+   ------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-parchment);
+  color: #1a0a0c;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  min-height: 100dvh;
+}
+
+/* Support safe-area insets on iOS */
+.safe-top {
+  padding-top: max(1.5rem, env(safe-area-inset-top));
+}
