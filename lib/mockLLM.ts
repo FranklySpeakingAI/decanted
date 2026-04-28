@@ -1,9 +1,7 @@
-import type { RawWine } from "./scoring"
+import type { RawWine, WineRegion, FoodPairing, WineType } from "./scoring"
 
 // ---------------------------------------------------------------------------
 // Canonical region taxonomy — server-side only, embedded in the LLM prompt.
-// Keys are the canonical region names returned in the JSON.
-// Sub-region lists are matching hints for the model.
 // ---------------------------------------------------------------------------
 const WINE_REGIONS = {
   // France
@@ -65,19 +63,19 @@ const WINE_REGIONS = {
   "South Africa": ["Stellenbosch", "Swartland", "Franschhoek"],
 } as const
 
-// Serialise the region map into the prompt once at module load
 const REGION_TAXONOMY = Object.entries(WINE_REGIONS)
   .map(([key, hints]) => `  "${key}": [${hints.map((h) => `"${h}"`).join(", ")}]`)
   .join("\n")
 
 // ---------------------------------------------------------------------------
-// Mock dataset — updated to new pairing categories and canonical regions
+// Mock dataset — includes type field
 // ---------------------------------------------------------------------------
 const MOCK_WINES: RawWine[] = [
   {
     name: "Château Léoville-Barton",
     producer: "Anthony Barton",
     vintage: 2016,
+    type: "Red",
     region: "Bordeaux",
     restaurantPrice: 195,
     marketPrice: 80,
@@ -90,6 +88,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Sassicaia",
     producer: "Tenuta San Guido",
     vintage: 2020,
+    type: "Red",
     region: "Tuscany",
     restaurantPrice: 175,
     marketPrice: 92,
@@ -102,6 +101,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Domaine Leflaive Puligny-Montrachet 1er Cru",
     producer: "Domaine Leflaive",
     vintage: 2021,
+    type: "White",
     region: "Burgundy",
     restaurantPrice: 290,
     marketPrice: 115,
@@ -114,6 +114,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Opus One",
     producer: "Opus One Winery",
     vintage: 2019,
+    type: "Red",
     region: "Napa Valley",
     restaurantPrice: 495,
     marketPrice: 195,
@@ -126,6 +127,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Flowers Pinot Noir Camp Meeting Ridge",
     producer: "Flowers Winery",
     vintage: 2021,
+    type: "Red",
     region: "Sonoma",
     restaurantPrice: 98,
     marketPrice: 48,
@@ -138,6 +140,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Gaja Barbaresco",
     producer: "Angelo Gaja",
     vintage: 2018,
+    type: "Red",
     region: "Piedmont",
     restaurantPrice: 380,
     marketPrice: 125,
@@ -150,6 +153,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Château Margaux",
     producer: "Château Margaux",
     vintage: 2017,
+    type: "Red",
     region: "Bordeaux",
     restaurantPrice: 895,
     marketPrice: 210,
@@ -162,6 +166,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Gevrey-Chambertin Vieilles Vignes",
     producer: "Rossignol-Trapet",
     vintage: 2020,
+    type: "Red",
     region: "Burgundy",
     restaurantPrice: 118,
     marketPrice: 55,
@@ -174,6 +179,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Weingut Keller Riesling Spätlese",
     producer: "Weingut Keller",
     vintage: 2022,
+    type: "White",
     region: "Germany",
     restaurantPrice: 84,
     marketPrice: 40,
@@ -186,6 +192,7 @@ const MOCK_WINES: RawWine[] = [
     name: "Château Pichon Baron",
     producer: "Château Pichon Baron",
     vintage: 2015,
+    type: "Red",
     region: "Bordeaux",
     restaurantPrice: 235,
     marketPrice: 90,
@@ -211,58 +218,23 @@ interface LLMResponse {
 }
 
 // ---------------------------------------------------------------------------
-// System prompt
+// Chunk system prompt (used for every LLM call)
 // ---------------------------------------------------------------------------
-const SYSTEM_PROMPT = `You are a professional sommelier and wine market expert specialising in European restaurant wine lists.
+const CHUNK_SYSTEM_PROMPT = `You are a wine list parser. Extract EVERY wine mentioned in this text segment. For each wine return a JSON object with these exact fields: name, producer, vintage (number or null), menuPrice (number in local currency), type (exactly one of: Red | White | Rosé | Champagne | Sparkling | Dessert | Non-Alcoholic), region (mapped from the WINE_REGIONS taxonomy), pairings (array from: Red Meat | White Meat | Game | Fish | Vegetarian), estimatedMarketPrice (number), criticScore (number 0–100 or null), markup (menuPrice divided by estimatedMarketPrice). Return ONLY a valid JSON array. No prose, no markdown, no explanation. If a field is unknown use null.
 
-TASK: Scan the ENTIRE document and extract EVERY wine mentioned. A complete list may have 50–200+ wines. Return ALL of them — never truncate or sample.
+Normalise ALL prices to per-bottle (75 cl) equivalent:
+• "le dl 8.9" or "dl 8.9" → bottle price = value × 7.5
+• "bouteille 73", "bt 73", "Fl. 73", "b. 73" → bottle price = 73
+• A bare number next to a wine → assume bottle price
+• If both glass and bottle prices appear, use the bottle price only
 
-━━━ PARSING RULES ━━━
-1. The document may be multilingual (French, German, English, Italian, mixed).
-2. Normalise ALL prices to per-bottle (75 cl) equivalent:
-   • "le dl 8.9" or "dl 8.9"   → bottle price = value × 7.5  (e.g. 8.9 × 7.5 = 66.75)
-   • "bouteille 73", "bt 73", "Fl. 73", "b. 73" → bottle price = 73
-   • A bare number next to a wine → assume bottle price
-   • If both glass and bottle prices appear, use the bottle price only
-3. Detect the currency from context (CHF for Swiss lists, EUR for European, etc.)
-4. Estimate the retail/market price in the SAME currency as the restaurant price.
-5. Estimate critic score (Robert Parker / Wine Spectator, 80–100). Default to 85 if unknown.
-6. vintage: null if not stated.
-7. Omit water, spirits, beer, juices — wines only.
+Detect the currency from context (CHF for Swiss lists, EUR for European, etc.).
+Estimate the retail/market price in the SAME currency as the restaurant price.
+Estimate critic score (Robert Parker / Wine Spectator, 80–100). Default to 85 if unknown.
+Omit water, spirits, beer, juices — wines only.
 
-━━━ REGION MAPPING ━━━
-Map each wine to exactly one key from this taxonomy using the sub-region list as matching hints.
-If no sub-region matches, use the closest parent key. If truly unknown, use "Other".
-NEVER invent region names outside this list.
-
-${REGION_TAXONOMY}
-
-━━━ FOOD PAIRINGS ━━━
-Choose any combination from exactly these five options:
-• "Red Meat"   — full-bodied reds: Cabernet, Syrah, Malbec, Barolo, aged Bordeaux
-• "White Meat" — medium whites and light reds: Chardonnay, Pinot Noir, Viognier, Rosé
-• "Game"       — earthy, tannic, high-acid reds: Burgundy Pinot, Rhône, northern Italy, older Bordeaux
-• "Fish"       — crisp whites, dry Rosé, Champagne: Chablis, Sancerre, Muscadet, Riesling
-• "Vegetarian" — aromatic whites, light reds, natural wines: Riesling, Gamay, Chenin, Grüner
-
-━━━ OUTPUT ━━━
-Respond with ONLY valid JSON — no markdown fences, no explanation:
-{
-  "currency": "CHF",
-  "wines": [
-    {
-      "name": "Wine Name",
-      "producer": "Producer Name",
-      "vintage": 2019,
-      "region": "Bordeaux",
-      "restaurantPrice": 84,
-      "marketPrice": 38,
-      "criticScore": 94,
-      "foodPairings": ["Red Meat"],
-      "sommelierNote": "Short note on value and food fit (≤ 20 words)."
-    }
-  ]
-}`
+WINE_REGIONS taxonomy (map each wine to exactly one key; use "Other" if unknown):
+${REGION_TAXONOMY}`
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -276,17 +248,22 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
     return MOCK_WINES
   }
 
-  const chunks = splitIntoChunks(input.content, 20_000)
+  // ~3000 tokens per chunk (~12 000 chars), ~200-token overlap (~800 chars)
+  const chunks = splitIntoChunks(input.content, 12_000, 800)
+  console.log(`[LLM] ${chunks.length} chunk(s) from ${input.content.length} chars`)
+
   const allWines: RawWine[] = []
   let detectedCurrency = "CHF"
 
-  for (const chunk of chunks) {
+  for (let i = 0; i < chunks.length; i++) {
     try {
-      const resp = await callLLM({ ...input, content: chunk }, openaiKey, anthropicKey)
+      console.log(`[LLM] Processing chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`)
+      const resp = await callLLM(chunks[i], openaiKey, anthropicKey)
       if (resp.currency) detectedCurrency = resp.currency
+      console.log(`[LLM] Chunk ${i + 1} returned ${resp.wines.length} wine(s)`)
       allWines.push(...resp.wines)
     } catch (err) {
-      console.error("[getLLMResponse] chunk error:", err instanceof Error ? err.message : err)
+      console.error(`[LLM] Chunk ${i + 1} error:`, err instanceof Error ? err.message : err)
     }
   }
 
@@ -295,6 +272,7 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
     currency: w.currency ?? detectedCurrency,
   }))
 
+  console.log(`[LLM] Total after dedup: ${merged.length} wines`)
   return merged.length > 0 ? merged : MOCK_WINES
 }
 
@@ -302,16 +280,16 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
 // Provider routing
 // ---------------------------------------------------------------------------
 async function callLLM(
-  input: LLMInput,
+  chunk: string,
   openaiKey?: string,
   anthropicKey?: string,
 ): Promise<LLMResponse> {
-  if (openaiKey) return callOpenAI(input, openaiKey)
-  if (anthropicKey) return callAnthropic(input, anthropicKey)
+  if (openaiKey) return callOpenAI(chunk, openaiKey)
+  if (anthropicKey) return callAnthropic(chunk, anthropicKey)
   throw new Error("No API key")
 }
 
-async function callOpenAI(input: LLMInput, apiKey: string): Promise<LLMResponse> {
+async function callOpenAI(chunk: string, apiKey: string): Promise<LLMResponse> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -321,10 +299,9 @@ async function callOpenAI(input: LLMInput, apiKey: string): Promise<LLMResponse>
     body: JSON.stringify({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserPrompt(input) },
+        { role: "system", content: CHUNK_SYSTEM_PROMPT },
+        { role: "user", content: `Extract all wines from this text:\n\n${chunk}` },
       ],
-      response_format: { type: "json_object" },
       temperature: 0.1,
       max_tokens: 8000,
     }),
@@ -332,10 +309,10 @@ async function callOpenAI(input: LLMInput, apiKey: string): Promise<LLMResponse>
   })
   if (!res.ok) throw new Error(`OpenAI ${res.status}`)
   const data = await res.json()
-  return parseResponse(data.choices?.[0]?.message?.content ?? "")
+  return parseChunkResponse(data.choices?.[0]?.message?.content ?? "")
 }
 
-async function callAnthropic(input: LLMInput, apiKey: string): Promise<LLMResponse> {
+async function callAnthropic(chunk: string, apiKey: string): Promise<LLMResponse> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -346,49 +323,96 @@ async function callAnthropic(input: LLMInput, apiKey: string): Promise<LLMRespon
     body: JSON.stringify({
       model: "claude-opus-4-7",
       max_tokens: 8000,
-      messages: [{ role: "user", content: `${SYSTEM_PROMPT}\n\n${buildUserPrompt(input)}` }],
+      system: CHUNK_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: `Extract all wines from this text:\n\n${chunk}` }],
     }),
     signal: AbortSignal.timeout(55_000),
   })
   if (!res.ok) throw new Error(`Anthropic ${res.status}`)
   const data = await res.json()
-  return parseResponse(data.content?.[0]?.text ?? "")
+  return parseChunkResponse(data.content?.[0]?.text ?? "")
+}
+
+// ---------------------------------------------------------------------------
+// Response parsing
+// ---------------------------------------------------------------------------
+function parseChunkResponse(text: string, currency = "CHF"): LLMResponse {
+  // Chunk responses are JSON arrays
+  const arrStart = text.indexOf("[")
+  if (arrStart !== -1) {
+    const arrEnd = text.lastIndexOf("]")
+    if (arrEnd > arrStart) {
+      try {
+        const arr = JSON.parse(text.slice(arrStart, arrEnd + 1))
+        if (Array.isArray(arr)) {
+          // Detect currency from first wine that has it
+          const detectedCurrency = arr.find((w) => w.currency)?.currency ?? currency
+          return { currency: detectedCurrency, wines: arr.map((w) => mapChunkWine(w, detectedCurrency)) }
+        }
+      } catch { /* fall through to object parse */ }
+    }
+  }
+
+  // Fallback: legacy object format { currency, wines: [...] }
+  const objStart = text.indexOf("{")
+  if (objStart === -1) throw new Error("No JSON in LLM response")
+  const parsed = JSON.parse(text.slice(objStart))
+  if (!Array.isArray(parsed?.wines)) throw new Error("Unexpected LLM JSON shape")
+  const detectedCurrency = parsed.currency ?? currency
+  return {
+    currency: detectedCurrency,
+    wines: parsed.wines.map((w: Record<string, unknown>) => mapChunkWine(w, detectedCurrency)),
+  }
+}
+
+// Maps the chunk response field names to RawWine field names
+function mapChunkWine(w: Record<string, unknown>, currency: string): RawWine {
+  const menuPrice = Number(w.menuPrice ?? w.restaurantPrice) || 0
+  const marketPrice =
+    Number(w.estimatedMarketPrice ?? w.marketPrice) ||
+    Math.round(menuPrice / 2.5) ||
+    1
+
+  return {
+    name: String(w.name ?? "Unknown"),
+    producer: String(w.producer ?? "Unknown"),
+    vintage: w.vintage != null ? Number(w.vintage) || null : null,
+    type: (w.type as WineType) ?? "Red",
+    region: ((w.region as string) ?? "Other") as WineRegion,
+    restaurantPrice: menuPrice,
+    marketPrice,
+    criticScore: w.criticScore != null ? Number(w.criticScore) || 85 : 85,
+    foodPairings: (Array.isArray(w.pairings) ? w.pairings : w.foodPairings
+      ? (w.foodPairings as unknown[])
+      : []) as FoodPairing[],
+    sommelierNote: String(w.sommelierNote ?? ""),
+    currency,
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function buildUserPrompt(input: LLMInput): string {
-  return input.mode === "url"
-    ? `Analyse this wine list scraped from a restaurant website:\n\n${input.content}`
-    : `Analyse this wine list from an uploaded document:\n\n${input.content}`
-}
-
-function parseResponse(text: string): LLMResponse {
-  const start = text.indexOf("{")
-  if (start === -1) throw new Error("No JSON in LLM response")
-  const parsed = JSON.parse(text.slice(start))
-  if (!Array.isArray(parsed?.wines)) throw new Error("Unexpected LLM JSON shape")
-  return { currency: parsed.currency ?? "CHF", wines: parsed.wines as RawWine[] }
-}
-
-function splitIntoChunks(text: string, maxLen: number): string[] {
+function splitIntoChunks(text: string, maxLen: number, overlap: number): string[] {
   if (text.length <= maxLen) return [text]
   const chunks: string[] = []
-  let remaining = text
-  while (remaining.length > maxLen) {
-    const windowStart = Math.floor(maxLen * 0.75)
-    const segment = remaining.slice(windowStart, maxLen)
-    const breakPatterns = ["\n\n", "\n", ". "]
-    let splitIdx = maxLen
-    for (const pat of breakPatterns) {
-      const idx = segment.lastIndexOf(pat)
-      if (idx >= 0) { splitIdx = windowStart + idx + pat.length; break }
+  let pos = 0
+  while (pos < text.length) {
+    const end = Math.min(pos + maxLen, text.length)
+    // Try to break at a paragraph or line boundary near the end of the window
+    let splitAt = end
+    if (end < text.length) {
+      const windowStart = Math.max(pos, end - 400)
+      const segment = text.slice(windowStart, end)
+      for (const pat of ["\n\n", "\n", ". "]) {
+        const idx = segment.lastIndexOf(pat)
+        if (idx >= 0) { splitAt = windowStart + idx + pat.length; break }
+      }
     }
-    chunks.push(remaining.slice(0, splitIdx))
-    remaining = remaining.slice(splitIdx)
+    chunks.push(text.slice(pos, splitAt))
+    if (splitAt >= text.length) break
+    pos = Math.max(pos + 1, splitAt - overlap)
   }
-  if (remaining.trim().length > 0) chunks.push(remaining)
   return chunks
 }
 

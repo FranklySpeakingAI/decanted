@@ -79,7 +79,9 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
       signal: AbortSignal.timeout(10_000),
     })
     if (!res.ok) return { success: false, error: "Could not access that URL. Please check the address and try again." }
-    content = stripHTML(await res.text()).slice(0, 80_000)
+    const rawText = stripHTML(await res.text())
+    content = rawText.slice(0, 80_000)
+    console.log(`[extractTextContent] Extracted ${rawText.length} chars from URL (sending ${content.length})`)
   } catch {
     return { success: false, error: "Could not access that URL. Please check the address and try again." }
   }
@@ -125,6 +127,7 @@ async function processFile(formData: FormData): Promise<ProcessResult> {
     }
   }
 
+  console.log(`[extractTextContent] Extracted ${content.length} characters from file`)
   const rawWines = await getLLMResponse({ mode: "file", content })
   const wines = scoreAndRankWines(rawWines)
   return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }

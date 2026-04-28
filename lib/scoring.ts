@@ -1,3 +1,12 @@
+export type WineType =
+  | "Red"
+  | "White"
+  | "Rosé"
+  | "Champagne"
+  | "Sparkling"
+  | "Dessert"
+  | "Non-Alcoholic"
+
 export type FoodPairing = "Red Meat" | "White Meat" | "Game" | "Fish" | "Vegetarian"
 
 // All canonical region keys the LLM maps to (matches WINE_REGIONS in mockLLM.ts)
@@ -24,6 +33,7 @@ export interface RawWine {
   name: string
   producer: string
   vintage: number | null
+  type?: WineType
   region: WineRegion
   restaurantPrice: number
   marketPrice: number
@@ -35,10 +45,12 @@ export interface RawWine {
 
 export interface ScoredWine extends RawWine {
   id: string
+  type: WineType
   currency: string
   markupFactor: number
   totalValueScore: number
   markupColor: MarkupColor
+  sommelierNote: string
 }
 
 export interface ProcessResult {
@@ -49,8 +61,9 @@ export interface ProcessResult {
 }
 
 export function scoreWine(wine: RawWine, index: number): ScoredWine {
+  const marketPrice = wine.marketPrice > 0 ? wine.marketPrice : wine.restaurantPrice / 2.5
   const markupFactor =
-    Math.round((wine.restaurantPrice / wine.marketPrice) * 10) / 10
+    Math.round((wine.restaurantPrice / marketPrice) * 10) / 10
 
   // Markup component: ideal ≤2.5×; penalise above 3.5×; floor at 0
   const markupComponent = Math.max(0, Math.min(40, (5 - markupFactor) * 10))
@@ -62,13 +75,20 @@ export function scoreWine(wine: RawWine, index: number): ScoredWine {
   const markupColor: MarkupColor =
     markupFactor <= 2.5 ? "green" : markupFactor <= 3.5 ? "amber" : "red"
 
+  const sommelierNote =
+    wine.sommelierNote ||
+    `${wine.region} at ${markupFactor.toFixed(1)}× — ${wine.criticScore} pts.`
+
   return {
     ...wine,
     id: `wine-${index}`,
+    type: wine.type ?? "Red",
     currency: wine.currency ?? "CHF",
     markupFactor,
     totalValueScore,
     markupColor,
+    marketPrice,
+    sommelierNote,
   }
 }
 
