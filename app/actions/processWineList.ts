@@ -17,36 +17,30 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
 function isRateLimited(ip: string): boolean {
   const now = Date.now()
   const entry = rateLimitStore.get(ip)
-
   if (!entry || now > entry.resetAt) {
     rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
     return false
   }
-
   if (entry.count >= RATE_LIMIT_MAX) return true
   entry.count++
   return false
 }
 
-function getClientIP(headersList: Awaited<ReturnType<typeof headers>>): string {
+function getClientIP(h: Awaited<ReturnType<typeof headers>>): string {
   return (
-    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    headersList.get("x-real-ip") ??
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    h.get("x-real-ip") ??
     "unknown"
   )
 }
 
 // ---------------------------------------------------------------------------
-// Main server action — called from WineFinder client component
+// Main server action
 // ---------------------------------------------------------------------------
-export async function processWineList(
-  formData: FormData,
-): Promise<ProcessResult> {
+export async function processWineList(formData: FormData): Promise<ProcessResult> {
   try {
     const h = await headers()
-    const ip = getClientIP(h)
-
-    if (isRateLimited(ip)) {
+    if (isRateLimited(getClientIP(h))) {
       return {
         success: false,
         error: "You've reached the limit of 10 searches per hour. Please try again later.",
@@ -56,10 +50,8 @@ export async function processWineList(
     const mode = formData.get("mode") as string | null
     if (mode === "url") return processURL(formData)
     if (mode === "file") return processFile(formData)
-
     return { success: false, error: "Invalid request." }
   } catch (err) {
-    // Log internally without leaking details to the client
     console.error("[processWineList]", err instanceof Error ? err.message : err)
     return { success: false, error: "Something went wrong. Please try again." }
   }
@@ -68,22 +60,14 @@ export async function processWineList(
 // ---------------------------------------------------------------------------
 // URL mode
 // ---------------------------------------------------------------------------
-const MAX_URL_LENGTH = 2048
-
 async function processURL(formData: FormData): Promise<ProcessResult> {
   const raw = (formData.get("url") as string | null) ?? ""
-
-  if (!raw || raw.length > MAX_URL_LENGTH) {
-    return { success: false, error: "Please provide a valid URL." }
-  }
+  if (!raw || raw.length > 2048) return { success: false, error: "Please provide a valid URL." }
 
   let parsed: URL
-  try {
-    parsed = new URL(raw)
-  } catch {
+  try { parsed = new URL(raw) } catch {
     return { success: false, error: "Please provide a valid URL." }
   }
-
   if (!["http:", "https:"].includes(parsed.protocol)) {
     return { success: false, error: "Only http and https URLs are supported." }
   }
@@ -91,26 +75,18 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
   let content: string
   try {
     const res = await fetch(raw, {
-      headers: { "User-Agent": "DecantedBot/1.0 (+https://decanted.app)" },
+      headers: { "User-Agent": "DecantedBot/1.0 (+https://decanted.vercel.app)" },
       signal: AbortSignal.timeout(10_000),
     })
-    if (!res.ok) {
-      return {
-        success: false,
-        error: "Could not access that URL. Please check the address and try again.",
-      }
-    }
-    const html = await res.text()
-    content = stripHTML(html).slice(0, 50_000)
+    if (!res.ok) return { success: false, error: "Could not access that URL. Please check the address and try again." }
+    content = stripHTML(await res.text()).slice(0, 80_000)
   } catch {
-    return {
-      success: false,
-      error: "Could not access that URL. Please check the address and try again.",
-    }
+    return { success: false, error: "Could not access that URL. Please check the address and try again." }
   }
 
   const rawWines = await getLLMResponse({ mode: "url", content })
-  return { success: true, wines: scoreAndRankWines(rawWines) }
+  const wines = scoreAndRankWines(rawWines)
+  return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }
 }
 
 // ---------------------------------------------------------------------------
@@ -118,12 +94,8 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
 // ---------------------------------------------------------------------------
 async function processFile(formData: FormData): Promise<ProcessResult> {
   const file = formData.get("file") as File | null
+  if (!file) return { success: false, error: "No file provided." }
 
-  if (!file) {
-    return { success: false, error: "No file provided." }
-  }
-
-  // Server-side validation (mirrors client-side — never trust client alone)
   const validation = await validateFile(file)
   if (!validation.valid) {
     return {
@@ -132,18 +104,99 @@ async function processFile(formData: FormData): Promise<ProcessResult> {
     }
   }
 
-  // Read entirely into memory; never touch the filesystem
+  // Read entirely into memory — never written to disk, never stored
   const buffer = await file.arrayBuffer()
-  const content = await extractTextContent(file, buffer)
+
+  let content: string
+  try {
+    content = await extractTextContent(file.type, buffer)
+  } catch (err) {
+    console.error("[extractTextContent]", err instanceof Error ? err.message : err)
+    return {
+      success: false,
+      error: "We couldn't read that file. Please try a different PDF, Word, or Excel file.",
+    }
+  }
+
+  if (!content.trim()) {
+    return {
+      success: false,
+      error: "The file appears to be empty or contains only images. Please try a text-based PDF.",
+    }
+  }
 
   const rawWines = await getLLMResponse({ mode: "file", content })
-  return { success: true, wines: scoreAndRankWines(rawWines) }
+  const wines = scoreAndRankWines(rawWines)
+  return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Text extraction — in-memory, no filesystem writes
 // ---------------------------------------------------------------------------
+async function extractTextContent(
+  mimeType: string,
+  buffer: ArrayBuffer,
+): Promise<string> {
+  const nodeBuffer = Buffer.from(buffer)
 
+  if (mimeType === "application/pdf") {
+    return extractPDF(nodeBuffer)
+  }
+
+  if (
+    mimeType ===
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return extractDOCX(nodeBuffer)
+  }
+
+  if (
+    mimeType ===
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  ) {
+    return extractXLSX(nodeBuffer)
+  }
+
+  throw new Error(`Unsupported MIME type: ${mimeType}`)
+}
+
+async function extractPDF(buf: Buffer): Promise<string> {
+  // Import from the lib path to bypass the test-file loading in pdf-parse's index.js.
+  // This is the canonical Next.js workaround for pdf-parse v1.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (
+    buf: Buffer,
+    opts?: { max?: number },
+  ) => Promise<{ text: string; numpages: number }>
+
+  const data = await pdfParse(buf)
+
+  // Warn if extraction produced very little text (likely a scanned/image PDF)
+  if (data.text.trim().length < 50) {
+    throw new Error("PDF appears to contain only images — no extractable text found.")
+  }
+
+  return data.text
+}
+
+async function extractDOCX(buf: Buffer): Promise<string> {
+  const mammoth = await import("mammoth")
+  const result = await mammoth.extractRawText({ buffer: buf })
+  return result.value
+}
+
+async function extractXLSX(buf: Buffer): Promise<string> {
+  const XLSX = await import("xlsx")
+  const workbook = XLSX.read(buf, { type: "buffer" })
+  return workbook.SheetNames.map((name) => {
+    const sheet = workbook.Sheets[name]
+    return `--- Sheet: ${name} ---\n${XLSX.utils.sheet_to_csv(sheet)}`
+  }).join("\n\n")
+}
+
+// ---------------------------------------------------------------------------
+// HTML stripping
+// ---------------------------------------------------------------------------
 function stripHTML(html: string): string {
   return html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
@@ -151,18 +204,4 @@ function stripHTML(html: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-}
-
-async function extractTextContent(
-  file: File,
-  buffer: ArrayBuffer,
-): Promise<string> {
-  // Stub — returns file metadata for the mock LLM.
-  // For production, replace with:
-  //   PDF  → pdf-parse / pdfjs-dist
-  //   DOCX → mammoth
-  //   XLSX → xlsx (SheetJS)
-  // The buffer is already in memory; pass it directly to the parser.
-  void buffer
-  return `Wine list extracted from uploaded file "${file.name}" (${Math.round(file.size / 1024)} KB, type: ${file.type}).`
 }

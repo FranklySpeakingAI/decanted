@@ -1,30 +1,28 @@
 @import "tailwindcss";
 
 /* -------------------------------------------------------------------------
-   Decanted design tokens
+   Design tokens
    ------------------------------------------------------------------------- */
 @theme inline {
-  /* Brand colours */
-  --color-wine:        #7B2D3D;
-  --color-wine-dark:   #2C0A0E;
-  --color-wine-light:  #C4768A;
-  --color-gold:        #C9A96E;
-  --color-gold-light:  #E5C990;
-  --color-parchment:   #F7F3EE;
+  --color-wine:        #8b2d3f;
+  --color-wine-dark:   #0f0508;
+  --color-wine-mid:    #2a0d14;
+  --color-wine-accent: #c14b65;
+  --color-gold:        #c9a96e;
+  --color-gold-light:  #e5c990;
+  --color-cream:       #f5f0e8;
+  --color-glass:       rgba(255,255,255,0.06);
 
-  /* Typography */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 /* -------------------------------------------------------------------------
-   Base reset
+   Base
    ------------------------------------------------------------------------- */
 *,
 *::before,
-*::after {
-  box-sizing: border-box;
-}
+*::after { box-sizing: border-box; }
 
 html {
   -webkit-font-smoothing: antialiased;
@@ -32,13 +30,78 @@ html {
 }
 
 body {
-  background-color: var(--color-parchment);
-  color: #1a0a0c;
+  background-color: #0f0508;
+  color: #f5f0e8;
   font-family: var(--font-sans), system-ui, sans-serif;
   min-height: 100dvh;
 }
 
-/* Support safe-area insets on iOS */
+/* Safe-area inset for iOS */
 .safe-top {
   padding-top: max(1.5rem, env(safe-area-inset-top));
+}
+
+/* -------------------------------------------------------------------------
+   Fade-in animation for result cards
+   ------------------------------------------------------------------------- */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.45s ease-out both;
+}
+
+/* -------------------------------------------------------------------------
+   Progress bar animation (25 s simulated scan)
+   ------------------------------------------------------------------------- */
+@keyframes scan-progress {
+  0%   { width: 0% }
+  8%   { width: 18% }
+  25%  { width: 38% }
+  55%  { width: 62% }
+  85%  { width: 82% }
+  100% { width: 88% }
+}
+.progress-bar {
+  animation: scan-progress 25s cubic-bezier(0.15, 0.5, 0.4, 1) forwards;
+}
+
+/* -------------------------------------------------------------------------
+   Dual-range slider thumbs
+   ------------------------------------------------------------------------- */
+.range-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  height: 0;
+}
+.range-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c9a96e;
+  cursor: pointer;
+  pointer-events: auto;
+  border: 2px solid #0f0508;
+  box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
+  transition: transform 0.15s ease;
+}
+.range-thumb::-webkit-slider-thumb:hover,
+.range-thumb:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+.range-thumb::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c9a96e;
+  cursor: pointer;
+  border: 2px solid #0f0508;
+  box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
 }

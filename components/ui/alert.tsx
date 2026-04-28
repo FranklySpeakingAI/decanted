@@ -12,9 +12,9 @@ export function Alert({
       role="alert"
       className={cn(
         "relative flex items-start gap-3 rounded-xl border p-4 text-sm",
-        variant === "default" && "border-stone-200 bg-stone-50 text-stone-700",
-        variant === "destructive" && "border-red-200 bg-red-50 text-red-800",
-        variant === "warning" && "border-amber-200 bg-amber-50 text-amber-800",
+        variant === "default"     && "border-white/15 bg-white/5 text-cream/80",
+        variant === "destructive" && "border-rose-500/30 bg-rose-500/10 text-rose-300",
+        variant === "warning"     && "border-amber-400/30 bg-amber-400/10 text-amber-300",
         className,
       )}
       {...props}

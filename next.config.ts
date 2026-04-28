@@ -1,6 +1,9 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
+  // Keep pdf-parse, mammoth, xlsx out of the client bundle entirely
+  serverExternalPackages: ["pdf-parse", "mammoth", "xlsx"],
+
   // Prevent the server action size limit from blocking large wine lists
   experimental: {
     serverActions: {

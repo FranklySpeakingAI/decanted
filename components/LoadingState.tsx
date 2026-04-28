@@ -1,16 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, AlertTriangle } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const MESSAGES = [
-  "Reading your wine list…",
-  "Checking market prices…",
-  "Finding your best pours…",
+  { pct: 0,  text: "Reading your wine list…" },
+  { pct: 35, text: "Checking market prices…" },
+  { pct: 65, text: "Finding your best pours…" },
 ]
-
-const TIMEOUT_WARNING_MS = 25_000
 
 interface LoadingStateProps {
   startedAt: number
@@ -21,41 +19,61 @@ export function LoadingState({ startedAt }: LoadingStateProps) {
   const [timedOut, setTimedOut] = useState(false)
 
   useEffect(() => {
-    const rotate = setInterval(() => {
-      setMsgIndex((i) => (i + 1) % MESSAGES.length)
-    }, 3_000)
-
-    const warn = setTimeout(() => setTimedOut(true), TIMEOUT_WARNING_MS)
+    // Advance messages at 6 s and 14 s from the start
+    const t1 = setTimeout(() => setMsgIndex(1), 6_000)
+    const t2 = setTimeout(() => setMsgIndex(2), 14_000)
+    const t3 = setTimeout(() => setTimedOut(true), 25_000)
 
     return () => {
-      clearInterval(rotate)
-      clearTimeout(warn)
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
     }
   }, [startedAt])
 
   return (
-    <div className="flex flex-col items-center gap-6 py-10 px-6 text-center">
+    <div className="flex flex-col items-center gap-8 px-8 py-12 text-center w-full max-w-sm mx-auto">
+      {/* Animated decanter / icon */}
       <div className="relative">
-        <div className="w-16 h-16 rounded-full bg-wine/10 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-wine animate-spin" />
+        <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center ring-1 ring-gold/20">
+          {/* Pulsing ring */}
+          <div className="absolute inset-0 rounded-full ring-1 ring-gold/20 animate-ping opacity-40" />
+          <svg viewBox="0 0 22 28" fill="currentColor" className="w-7 h-7 text-gold" aria-hidden="true">
+            <rect x="8.5" y="0" width="5" height="4" rx="2" />
+            <rect x="9.5" y="4" width="3" height="6" />
+            <path d="M4 10 C2 13 1 17 1 21 C1 25 5.5 27.5 11 27.5 C16.5 27.5 21 25 21 21 C21 17 20 13 18 10 Z" />
+          </svg>
         </div>
       </div>
 
+      {/* Message */}
       <div className="space-y-1">
-        <p className="text-base font-medium text-stone-800">
-          {MESSAGES[msgIndex]}
+        <p className="text-base font-semibold text-cream transition-all duration-500">
+          {MESSAGES[msgIndex].text}
         </p>
-        <p className="text-xs text-stone-400">
-          Our sommelier is hard at work
-        </p>
+        <p className="text-xs text-cream/35">Our sommelier is hard at work</p>
       </div>
 
+      {/* Progress bar */}
+      <div className="w-full space-y-2">
+        <div className="h-1 bg-white/8 rounded-full overflow-hidden">
+          <div
+            className="progress-bar h-full rounded-full bg-gradient-to-r from-wine-accent via-wine-accent to-gold"
+          />
+        </div>
+        <div className="flex justify-between text-[10px] text-cream/25">
+          <span>Reading</span>
+          <span>Pricing</span>
+          <span>Scoring</span>
+        </div>
+      </div>
+
+      {/* Timeout warning */}
       {timedOut && (
-        <Alert variant="warning" className="max-w-sm text-left">
+        <Alert variant="warning">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <AlertDescription>
-            Still working on it — complex lists can take a little longer.
-            Hang tight!
+            Still working — a large wine list can take a little longer. Hang tight!
           </AlertDescription>
         </Alert>
       )}

@@ -24,7 +24,6 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
   async function handleFile(candidate: File) {
     setError(null)
     setFile(null)
-
     const result = await validateFile(candidate)
     if (!result.valid) {
       setError(friendlyValidationError(result.error ?? "unsupported_type"))
@@ -33,15 +32,12 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
     setFile(candidate)
   }
 
-  const handleDrop = useCallback(
-    async (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      setIsDragging(false)
-      const dropped = e.dataTransfer.files[0]
-      if (dropped) await handleFile(dropped)
-    },
-    [],
-  )
+  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const dropped = e.dataTransfer.files[0]
+    if (dropped) await handleFile(dropped)
+  }, [])
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0]
@@ -49,38 +45,24 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
     e.target.value = ""
   }
 
-  function clearFile() {
-    setFile(null)
-    setError(null)
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (file) onSubmit(file)
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={(e) => { e.preventDefault(); if (file) onSubmit(file) }} className="space-y-3">
       <div className="space-y-1.5">
-        <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-cream/35">
           Upload wine list
         </span>
 
         {file ? (
-          <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
-            <FileText className="w-5 h-5 text-green-600 shrink-0" />
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+            <FileText className="w-5 h-5 text-emerald-400 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-stone-800 truncate">
-                {file.name}
-              </p>
-              <p className="text-xs text-stone-400">
-                {(file.size / 1024).toFixed(0)} KB
-              </p>
+              <p className="text-sm font-medium text-cream truncate">{file.name}</p>
+              <p className="text-xs text-cream/35">{(file.size / 1024).toFixed(0)} KB</p>
             </div>
             <button
               type="button"
-              onClick={clearFile}
-              className="text-stone-400 hover:text-stone-600 transition-colors"
+              onClick={() => { setFile(null); setError(null) }}
+              className="text-cream/30 hover:text-cream/70 transition-colors"
               aria-label="Remove file"
             >
               <X className="w-4 h-4" />
@@ -93,41 +75,26 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
             aria-label="Click to select file or drag and drop"
             onClick={() => inputRef.current?.click()}
             onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault()
-              setIsDragging(true)
-            }}
-            onDragEnter={(e) => {
-              e.preventDefault()
-              setIsDragging(true)
-            }}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+            onDragEnter={(e) => { e.preventDefault(); setIsDragging(true) }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             className={cn(
-              "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer",
+              "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer",
               isDragging
-                ? "border-wine bg-wine/5"
-                : "border-stone-200 bg-stone-50 hover:border-wine/40 hover:bg-stone-100",
+                ? "border-gold/60 bg-gold/5"
+                : "border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5",
             )}
           >
-            <Upload
-              className={cn(
-                "w-7 h-7 transition-colors",
-                isDragging ? "text-wine" : "text-stone-400",
-              )}
-            />
+            <Upload className={cn("w-7 h-7 transition-colors", isDragging ? "text-gold" : "text-cream/25")} />
             <div>
-              <p className="text-sm font-medium text-stone-700">
-                Tap to choose a file
-              </p>
-              <p className="text-xs text-stone-400 mt-0.5">
-                PDF, Word, or Excel · Max 10 MB
-              </p>
+              <p className="text-sm font-medium text-cream/70">Tap to choose a file</p>
+              <p className="text-xs text-cream/30 mt-0.5">PDF, Word, or Excel · Max 10 MB</p>
             </div>
           </div>
         )}
 
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-rose-400">{error}</p>}
 
         <input
           ref={inputRef}
@@ -140,12 +107,7 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
         />
       </div>
 
-      <Button
-        type="submit"
-        className="w-full"
-        size="lg"
-        disabled={disabled || !file}
-      >
+      <Button type="submit" className="w-full" size="lg" disabled={disabled || !file}>
         <Search className="w-4 h-4" />
         Find Best Pours
       </Button>
