@@ -86,9 +86,15 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
     return { success: false, error: "Could not access that URL. Please check the address and try again." }
   }
 
-  const rawWines = await getLLMResponse({ mode: "url", content })
-  const wines = scoreAndRankWines(rawWines)
-  return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }
+  try {
+    const rawWines = await getLLMResponse({ mode: "url", content })
+    const wines = scoreAndRankWines(rawWines)
+    return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "LLM call failed"
+    console.error("[processURL] LLM error:", msg)
+    return { success: false, error: msg }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -128,9 +134,15 @@ async function processFile(formData: FormData): Promise<ProcessResult> {
   }
 
   console.log(`[extractTextContent] Extracted ${content.length} characters from file`)
-  const rawWines = await getLLMResponse({ mode: "file", content })
-  const wines = scoreAndRankWines(rawWines)
-  return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }
+  try {
+    const rawWines = await getLLMResponse({ mode: "file", content })
+    const wines = scoreAndRankWines(rawWines)
+    return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "LLM call failed"
+    console.error("[processFile] LLM error:", msg)
+    return { success: false, error: msg }
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -244,9 +244,13 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
   const anthropicKey = process.env.ANTHROPIC_API_KEY
 
   if (!openaiKey && !anthropicKey) {
+    console.log("[LLM] No API key found — returning mock data")
     await new Promise((r) => setTimeout(r, 1800))
     return MOCK_WINES
   }
+
+  const provider = openaiKey ? "OpenAI" : "Anthropic"
+  console.log(`[LLM] Using ${provider}`)
 
   // ~3000 tokens per chunk (~12 000 chars), ~200-token overlap (~800 chars)
   const chunks = splitIntoChunks(input.content, 12_000, 800)
@@ -254,6 +258,7 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
 
   const allWines: RawWine[] = []
   let detectedCurrency = "CHF"
+  const errors: string[] = []
 
   for (let i = 0; i < chunks.length; i++) {
     try {
@@ -263,7 +268,9 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
       console.log(`[LLM] Chunk ${i + 1} returned ${resp.wines.length} wine(s)`)
       allWines.push(...resp.wines)
     } catch (err) {
-      console.error(`[LLM] Chunk ${i + 1} error:`, err instanceof Error ? err.message : err)
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`[LLM] Chunk ${i + 1} error:`, msg)
+      errors.push(msg)
     }
   }
 
@@ -273,7 +280,13 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
   }))
 
   console.log(`[LLM] Total after dedup: ${merged.length} wines`)
-  return merged.length > 0 ? merged : MOCK_WINES
+
+  if (merged.length === 0) {
+    const reason = errors.length > 0 ? errors[0] : "LLM returned no wines"
+    throw new Error(`LLM extraction failed: ${reason}`)
+  }
+
+  return merged
 }
 
 // ---------------------------------------------------------------------------
@@ -321,7 +334,7 @@ async function callAnthropic(chunk: string, apiKey: string): Promise<LLMResponse
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-opus-4-7",
+      model: "claude-sonnet-4-6",
       max_tokens: 8000,
       system: CHUNK_SYSTEM_PROMPT,
       messages: [{ role: "user", content: `Extract all wines from this text:\n\n${chunk}` }],
