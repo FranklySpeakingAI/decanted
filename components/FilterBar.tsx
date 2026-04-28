@@ -4,12 +4,42 @@ import type { FoodPairing, WineRegion } from "@/lib/scoring"
 import { Button } from "@/components/ui/button"
 import { RangeSlider } from "@/components/ui/slider"
 
-const FOOD_PAIRINGS: FoodPairing[] = ["Chicken", "Beef", "Fish", "Vegetarian"]
-const REGIONS: WineRegion[] = ["Bordeaux", "Burgundy", "Tuscany", "Napa", "Other"]
+// ---------------------------------------------------------------------------
+// Food pairing options (label, emoji, data value)
+// ---------------------------------------------------------------------------
+const FOOD_OPTIONS: { label: string; emoji: string; value: FoodPairing }[] = [
+  { label: "Red Meat",   emoji: "🥩", value: "Red Meat" },
+  { label: "White Meat", emoji: "🍗", value: "White Meat" },
+  { label: "Game",       emoji: "🦌", value: "Game" },
+  { label: "Fish",       emoji: "🐟", value: "Fish" },
+  { label: "Vegetarian", emoji: "🥗", value: "Vegetarian" },
+]
 
+// ---------------------------------------------------------------------------
+// Region groups — maps a filter label to all matching WineRegion values.
+// Exported so WineFinder can use the same lookup for filter application.
+// ---------------------------------------------------------------------------
+export const REGION_GROUPS: Record<string, WineRegion[]> = {
+  Bordeaux:         ["Bordeaux"],
+  Burgundy:         ["Burgundy"],
+  Champagne:        ["Champagne"],
+  "Rhône":          ["Rhône"],
+  Switzerland:      ["Swiss — Vaud", "Swiss — Valais", "Swiss — Geneva", "Swiss — Neuchâtel"],
+  Italy:            ["Tuscany", "Piedmont", "Veneto", "Sicily"],
+  "Germany/Austria":["Germany", "Austria"],
+  Spain:            ["Rioja", "Ribera del Duero", "Priorat"],
+  "New World":      ["Napa Valley", "Sonoma", "Argentina", "Chile", "Australia", "New Zealand", "South Africa"],
+  Other:            ["Alsace", "Loire", "Languedoc", "Provence", "Jura", "Beaujolais", "Southwest France", "Other"],
+}
+
+const REGION_LABELS = Object.keys(REGION_GROUPS)
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 export interface Filters {
   food: FoodPairing | null
-  region: WineRegion | null
+  region: string | null     // group label key from REGION_GROUPS
   priceMin: number | null
   priceMax: number | null
 }
@@ -30,12 +60,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function FilterBar({ filters, onChange, priceBounds, currency }: FilterBarProps) {
-  function toggleFood(food: FoodPairing) {
-    onChange({ ...filters, food: filters.food === food ? null : food })
+  function toggleFood(value: FoodPairing) {
+    onChange({ ...filters, food: filters.food === value ? null : value })
   }
 
-  function toggleRegion(region: WineRegion) {
-    onChange({ ...filters, region: filters.region === region ? null : region })
+  function toggleRegion(label: string) {
+    onChange({ ...filters, region: filters.region === label ? null : label })
   }
 
   function handlePriceChange([min, max]: [number, number]) {
@@ -53,39 +83,40 @@ export function FilterBar({ filters, onChange, priceBounds, currency }: FilterBa
       <div>
         <SectionLabel>Food pairing</SectionLabel>
         <div className="flex gap-1.5 flex-wrap">
-          {FOOD_PAIRINGS.map((food) => (
+          {FOOD_OPTIONS.map(({ label, emoji, value }) => (
             <Button
-              key={food}
+              key={value}
               variant="filter"
               size="sm"
-              data-active={filters.food === food}
-              onClick={() => toggleFood(food)}
+              data-active={filters.food === value}
+              onClick={() => toggleFood(value)}
             >
-              {food}
+              <span>{emoji}</span>
+              {label}
             </Button>
           ))}
         </div>
       </div>
 
-      {/* Region */}
+      {/* Region groups */}
       <div>
         <SectionLabel>Region</SectionLabel>
         <div className="flex gap-1.5 flex-wrap">
-          {REGIONS.map((region) => (
+          {REGION_LABELS.map((label) => (
             <Button
-              key={region}
+              key={label}
               variant="filter"
               size="sm"
-              data-active={filters.region === region}
-              onClick={() => toggleRegion(region)}
+              data-active={filters.region === label}
+              onClick={() => toggleRegion(label)}
             >
-              {region}
+              {label}
             </Button>
           ))}
         </div>
       </div>
 
-      {/* Price range slider — only shown when we have bounds */}
+      {/* Price range */}
       {priceBounds && priceBounds[0] < priceBounds[1] && (
         <div>
           <SectionLabel>Menu price range</SectionLabel>

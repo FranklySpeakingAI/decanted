@@ -1,7 +1,77 @@
 import type { RawWine } from "./scoring"
 
 // ---------------------------------------------------------------------------
-// Mock dataset (CHF, Swiss-restaurant style)
+// Canonical region taxonomy — server-side only, embedded in the LLM prompt.
+// Keys are the canonical region names returned in the JSON.
+// Sub-region lists are matching hints for the model.
+// ---------------------------------------------------------------------------
+const WINE_REGIONS = {
+  // France
+  Bordeaux:     ["Pauillac", "Margaux", "St-Estèphe", "St-Julien", "Graves",
+                 "Pessac-Léognan", "Pomerol", "St-Emilion", "Haut-Médoc",
+                 "Moulis", "Listrac", "Sauternes", "Médoc"],
+  Burgundy:     ["Côte de Nuits", "Côte de Beaune", "Nuits-Saint-Georges",
+                 "Gevrey-Chambertin", "Meursault", "Puligny-Montrachet",
+                 "Chassagne-Montrachet", "Beaune", "Pommard", "Volnay",
+                 "Mâcon", "Chablis", "Viré-Clessé", "Bouzeron", "Montagny"],
+  Champagne:    ["Aÿ", "Avize", "Bouzy", "Ambonnay", "Louvois", "Épernay",
+                 "Reims", "Vallée de la Marne"],
+  "Rhône":      ["Châteauneuf-du-Pape", "Hermitage", "Crozes-Hermitage",
+                 "Côte Rôtie", "Gigondas", "Vacqueyras", "Condrieu"],
+  Alsace:       ["Alsace Grand Cru", "Riesling Alsace", "Gewurztraminer",
+                 "Pinot Gris Alsace"],
+  Loire:        ["Sancerre", "Pouilly-Fumé", "Muscadet", "Vouvray",
+                 "Chinon", "Bourgueil", "Saumur"],
+  Languedoc:    ["Corbières", "Minervois", "Fitou", "Pic Saint-Loup",
+                 "Saint-Guilhem-le-Désert", "Montpeyroux", "Côtes Catalanes",
+                 "Duché d'Uzès", "IGP Gers"],
+  Provence:     ["Bandol", "Côtes de Provence", "Luberon", "Les Baux"],
+  Jura:         ["Arbois", "Côte du Jura", "Vin Jaune", "Étoile"],
+  Beaujolais:   ["Morgon", "Moulin-à-Vent", "Fleurie", "Juliénas",
+                 "Brouilly", "Chiroubles"],
+  "Southwest France": ["Cahors", "Madiran", "Gaillac", "Bergerac"],
+
+  // Italy
+  Tuscany:      ["Chianti", "Brunello di Montalcino", "Bolgheri",
+                 "Vino Nobile di Montepulciano", "Super Tuscan"],
+  Piedmont:     ["Barolo", "Barbaresco", "Barbera d'Asti", "Dolcetto"],
+  Veneto:       ["Amarone", "Soave", "Valpolicella", "Prosecco"],
+  Sicily:       ["Etna", "Nero d'Avola", "Marsala"],
+
+  // Spain
+  Rioja:        ["Rioja Alta", "Rioja Alavesa", "Rioja Baja"],
+  "Ribera del Duero": ["Ribera del Duero"],
+  Priorat:      ["Priorat", "Montsant"],
+
+  // Germany & Austria
+  Germany:      ["Mosel", "Rheingau", "Rheinhessen", "Pfalz", "Baden"],
+  Austria:      ["Wachau", "Kamptal", "Kremstal", "Burgenland"],
+
+  // Switzerland
+  "Swiss — Vaud":     ["Lavaux", "La Côte", "Chablais", "Dézaley", "Yvorne",
+                       "St-Saphorin", "Epesse", "Mont-sur-Rolle", "Luins"],
+  "Swiss — Valais":   ["Sion", "Fully", "Sierre", "Flanthey", "Lens",
+                       "Martigny", "Vétroz"],
+  "Swiss — Geneva":   ["Bardonnex", "Lully", "Satigny", "Dardagny"],
+  "Swiss — Neuchâtel":["Auvernier", "Cortaillod", "Boudry"],
+
+  // New World
+  "Napa Valley":  ["Napa", "Oakville", "Rutherford", "Stags Leap", "Howell Mountain"],
+  Sonoma:         ["Russian River Valley", "Dry Creek Valley", "Alexander Valley"],
+  Argentina:      ["Mendoza", "Malbec Argentina"],
+  Chile:          ["Maipo", "Colchagua", "Casablanca"],
+  Australia:      ["Barossa Valley", "McLaren Vale", "Margaret River", "Clare Valley"],
+  "New Zealand":  ["Marlborough", "Central Otago", "Hawke's Bay"],
+  "South Africa": ["Stellenbosch", "Swartland", "Franschhoek"],
+} as const
+
+// Serialise the region map into the prompt once at module load
+const REGION_TAXONOMY = Object.entries(WINE_REGIONS)
+  .map(([key, hints]) => `  "${key}": [${hints.map((h) => `"${h}"`).join(", ")}]`)
+  .join("\n")
+
+// ---------------------------------------------------------------------------
+// Mock dataset — updated to new pairing categories and canonical regions
 // ---------------------------------------------------------------------------
 const MOCK_WINES: RawWine[] = [
   {
@@ -13,7 +83,7 @@ const MOCK_WINES: RawWine[] = [
     marketPrice: 80,
     criticScore: 96,
     currency: "CHF",
-    foodPairings: ["Beef", "Vegetarian"],
+    foodPairings: ["Red Meat", "Vegetarian"],
     sommelierNote: "Saint-Julien at 2.4× — 96-point vintage, textbook markup.",
   },
   {
@@ -25,7 +95,7 @@ const MOCK_WINES: RawWine[] = [
     marketPrice: 92,
     criticScore: 97,
     currency: "CHF",
-    foodPairings: ["Beef", "Chicken"],
+    foodPairings: ["Red Meat", "White Meat"],
     sommelierNote: "Bolgheri benchmark at 1.9× — close to retail, supreme value.",
   },
   {
@@ -37,44 +107,44 @@ const MOCK_WINES: RawWine[] = [
     marketPrice: 115,
     criticScore: 95,
     currency: "CHF",
-    foodPairings: ["Fish", "Chicken", "Vegetarian"],
+    foodPairings: ["Fish", "White Meat", "Vegetarian"],
     sommelierNote: "White Burgundy at 2.5× — ideal markup, stunning with fish.",
   },
   {
     name: "Opus One",
     producer: "Opus One Winery",
     vintage: 2019,
-    region: "Napa",
+    region: "Napa Valley",
     restaurantPrice: 495,
     marketPrice: 195,
     criticScore: 97,
     currency: "CHF",
-    foodPairings: ["Beef", "Chicken"],
+    foodPairings: ["Red Meat", "White Meat"],
     sommelierNote: "Napa icon at 2.5× — show-stopping for a special occasion.",
   },
   {
     name: "Flowers Pinot Noir Camp Meeting Ridge",
     producer: "Flowers Winery",
     vintage: 2021,
-    region: "Other",
+    region: "Sonoma",
     restaurantPrice: 98,
     marketPrice: 48,
     criticScore: 93,
     currency: "CHF",
-    foodPairings: ["Chicken", "Fish", "Vegetarian"],
+    foodPairings: ["White Meat", "Fish", "Vegetarian"],
     sommelierNote: "Sonoma Pinot at 2.0× — versatile, great with lighter dishes.",
   },
   {
     name: "Gaja Barbaresco",
     producer: "Angelo Gaja",
     vintage: 2018,
-    region: "Other",
+    region: "Piedmont",
     restaurantPrice: 380,
     marketPrice: 125,
     criticScore: 96,
     currency: "CHF",
-    foodPairings: ["Beef", "Chicken"],
-    sommelierNote: "Piedmont royalty at 3.0× — borderline but the 96pts justifies.",
+    foodPairings: ["Red Meat", "Game"],
+    sommelierNote: "Piedmont royalty at 3.0× — earthy, tannic, built for game.",
   },
   {
     name: "Château Margaux",
@@ -85,7 +155,7 @@ const MOCK_WINES: RawWine[] = [
     marketPrice: 210,
     criticScore: 98,
     currency: "CHF",
-    foodPairings: ["Beef", "Vegetarian"],
+    foodPairings: ["Red Meat"],
     sommelierNote: "First-growth at 4.3× — steep, but 98 points speaks for itself.",
   },
   {
@@ -97,20 +167,20 @@ const MOCK_WINES: RawWine[] = [
     marketPrice: 55,
     criticScore: 91,
     currency: "CHF",
-    foodPairings: ["Beef", "Chicken"],
-    sommelierNote: "Village Gevrey at 2.1× — old vine depth at a fraction of premier cru.",
+    foodPairings: ["Game", "Red Meat"],
+    sommelierNote: "Old-vine Gevrey at 2.1× — earthy depth perfect for game.",
   },
   {
     name: "Weingut Keller Riesling Spätlese",
     producer: "Weingut Keller",
     vintage: 2022,
-    region: "Other",
+    region: "Germany",
     restaurantPrice: 84,
     marketPrice: 40,
     criticScore: 94,
     currency: "CHF",
-    foodPairings: ["Fish", "Vegetarian", "Chicken"],
-    sommelierNote: "Rheinhessen Riesling at 2.1× — electric acidity, 94pts, phenomenal fish wine.",
+    foodPairings: ["Fish", "Vegetarian", "White Meat"],
+    sommelierNote: "Rheinhessen Riesling at 2.1× — 94pts, phenomenal fish wine.",
   },
   {
     name: "Château Pichon Baron",
@@ -121,8 +191,8 @@ const MOCK_WINES: RawWine[] = [
     marketPrice: 90,
     criticScore: 98,
     currency: "CHF",
-    foodPairings: ["Beef", "Vegetarian"],
-    sommelierNote: "Pauillac second-growth, 98pts, 2.6× — serious value if you love Cabernet.",
+    foodPairings: ["Red Meat"],
+    sommelierNote: "Pauillac second-growth, 98pts, 2.6× — serious Cabernet value.",
   },
 ]
 
@@ -141,29 +211,42 @@ interface LLMResponse {
 }
 
 // ---------------------------------------------------------------------------
-// System prompt — instructs the model to return EVERY wine in the document
+// System prompt
 // ---------------------------------------------------------------------------
 const SYSTEM_PROMPT = `You are a professional sommelier and wine market expert specialising in European restaurant wine lists.
 
 TASK: Scan the ENTIRE document and extract EVERY wine mentioned. A complete list may have 50–200+ wines. Return ALL of them — never truncate or sample.
 
-PARSING RULES:
+━━━ PARSING RULES ━━━
 1. The document may be multilingual (French, German, English, Italian, mixed).
 2. Normalise ALL prices to per-bottle (75 cl) equivalent:
-   • "le dl 8.9" or "dl 8.9"  → bottle price = value × 7.5  (e.g. 8.9 × 7.5 = 66.75)
+   • "le dl 8.9" or "dl 8.9"   → bottle price = value × 7.5  (e.g. 8.9 × 7.5 = 66.75)
    • "bouteille 73", "bt 73", "Fl. 73", "b. 73" → bottle price = 73
    • A bare number next to a wine → assume bottle price
-   • If both glass and bottle prices appear, use the bottle price
+   • If both glass and bottle prices appear, use the bottle price only
 3. Detect the currency from context (CHF for Swiss lists, EUR for European, etc.)
 4. Estimate the retail/market price in the SAME currency as the restaurant price.
 5. Estimate critic score (Robert Parker / Wine Spectator, 80–100). Default to 85 if unknown.
-6. region must be one of: Bordeaux, Burgundy, Tuscany, Napa, Other
-7. foodPairings: choose any combination of Chicken, Beef, Fish, Vegetarian
-8. sommelierNote: ≤ 20 words, focus on value and food fit
-9. vintage: null if not stated
-10. Omit water, spirits, beer, juices — wines only
+6. vintage: null if not stated.
+7. Omit water, spirits, beer, juices — wines only.
 
-OUTPUT: Respond with ONLY valid JSON — no markdown fences, no explanation:
+━━━ REGION MAPPING ━━━
+Map each wine to exactly one key from this taxonomy using the sub-region list as matching hints.
+If no sub-region matches, use the closest parent key. If truly unknown, use "Other".
+NEVER invent region names outside this list.
+
+${REGION_TAXONOMY}
+
+━━━ FOOD PAIRINGS ━━━
+Choose any combination from exactly these five options:
+• "Red Meat"   — full-bodied reds: Cabernet, Syrah, Malbec, Barolo, aged Bordeaux
+• "White Meat" — medium whites and light reds: Chardonnay, Pinot Noir, Viognier, Rosé
+• "Game"       — earthy, tannic, high-acid reds: Burgundy Pinot, Rhône, northern Italy, older Bordeaux
+• "Fish"       — crisp whites, dry Rosé, Champagne: Chablis, Sancerre, Muscadet, Riesling
+• "Vegetarian" — aromatic whites, light reds, natural wines: Riesling, Gamay, Chenin, Grüner
+
+━━━ OUTPUT ━━━
+Respond with ONLY valid JSON — no markdown fences, no explanation:
 {
   "currency": "CHF",
   "wines": [
@@ -175,8 +258,8 @@ OUTPUT: Respond with ONLY valid JSON — no markdown fences, no explanation:
       "restaurantPrice": 84,
       "marketPrice": 38,
       "criticScore": 94,
-      "foodPairings": ["Beef"],
-      "sommelierNote": "Short note on value and food fit."
+      "foodPairings": ["Red Meat"],
+      "sommelierNote": "Short note on value and food fit (≤ 20 words)."
     }
   ]
 }`
@@ -193,7 +276,6 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
     return MOCK_WINES
   }
 
-  // Chunk large documents so every wine is captured across multiple calls
   const chunks = splitIntoChunks(input.content, 20_000)
   const allWines: RawWine[] = []
   let detectedCurrency = "CHF"
@@ -217,7 +299,7 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Routing to the correct provider
+// Provider routing
 // ---------------------------------------------------------------------------
 async function callLLM(
   input: LLMInput,
@@ -248,7 +330,6 @@ async function callOpenAI(input: LLMInput, apiKey: string): Promise<LLMResponse>
     }),
     signal: AbortSignal.timeout(55_000),
   })
-
   if (!res.ok) throw new Error(`OpenAI ${res.status}`)
   const data = await res.json()
   return parseResponse(data.choices?.[0]?.message?.content ?? "")
@@ -265,16 +346,10 @@ async function callAnthropic(input: LLMInput, apiKey: string): Promise<LLMRespon
     body: JSON.stringify({
       model: "claude-opus-4-7",
       max_tokens: 8000,
-      messages: [
-        {
-          role: "user",
-          content: `${SYSTEM_PROMPT}\n\n${buildUserPrompt(input)}`,
-        },
-      ],
+      messages: [{ role: "user", content: `${SYSTEM_PROMPT}\n\n${buildUserPrompt(input)}` }],
     }),
     signal: AbortSignal.timeout(55_000),
   })
-
   if (!res.ok) throw new Error(`Anthropic ${res.status}`)
   const data = await res.json()
   return parseResponse(data.content?.[0]?.text ?? "")
@@ -297,32 +372,22 @@ function parseResponse(text: string): LLMResponse {
   return { currency: parsed.currency ?? "CHF", wines: parsed.wines as RawWine[] }
 }
 
-// Split on natural paragraph/section breaks, never in the middle of a wine entry
 function splitIntoChunks(text: string, maxLen: number): string[] {
   if (text.length <= maxLen) return [text]
-
   const chunks: string[] = []
   let remaining = text
-
   while (remaining.length > maxLen) {
-    // Search for a split point in the last 25% of the allowed window
     const windowStart = Math.floor(maxLen * 0.75)
     const segment = remaining.slice(windowStart, maxLen)
     const breakPatterns = ["\n\n", "\n", ". "]
-
     let splitIdx = maxLen
     for (const pat of breakPatterns) {
       const idx = segment.lastIndexOf(pat)
-      if (idx >= 0) {
-        splitIdx = windowStart + idx + pat.length
-        break
-      }
+      if (idx >= 0) { splitIdx = windowStart + idx + pat.length; break }
     }
-
     chunks.push(remaining.slice(0, splitIdx))
     remaining = remaining.slice(splitIdx)
   }
-
   if (remaining.trim().length > 0) chunks.push(remaining)
   return chunks
 }

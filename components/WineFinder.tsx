@@ -7,7 +7,7 @@ import type { ScoredWine, FoodPairing, WineRegion } from "@/lib/scoring"
 import { URLInput } from "@/components/URLInput"
 import { FileUpload } from "@/components/FileUpload"
 import { WineCard } from "@/components/WineCard"
-import { FilterBar, type Filters } from "@/components/FilterBar"
+import { FilterBar, REGION_GROUPS, type Filters } from "@/components/FilterBar"
 import { LoadingState } from "@/components/LoadingState"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -65,7 +65,10 @@ export function WineFinder() {
     return wines
       .filter((w) => {
         if (filters.food && !w.foodPairings.includes(filters.food as FoodPairing)) return false
-        if (filters.region && w.region !== (filters.region as WineRegion)) return false
+        if (filters.region) {
+          const matchingRegions = REGION_GROUPS[filters.region] ?? []
+          if (!matchingRegions.includes(w.region as WineRegion)) return false
+        }
         if (filters.priceMin !== null && w.restaurantPrice < filters.priceMin) return false
         if (filters.priceMax !== null && w.restaurantPrice > filters.priceMax) return false
         return true
@@ -119,12 +122,12 @@ export function WineFinder() {
   const hasResults = wines !== null && !isLoading
 
   return (
-    <div className="flex flex-col min-h-dvh bg-wine-dark">
+    <div className="flex flex-col min-h-dvh bg-sweep">
 
       {/* ------------------------------------------------------------------ */}
       {/* Header                                                               */}
       {/* ------------------------------------------------------------------ */}
-      <header className="safe-top px-5 pb-5 bg-[#0a0306] border-b border-white/5">
+      <header className="safe-top px-5 pb-5 bg-[#160b0f] border-b border-white/5">
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center ring-1 ring-gold/20 shrink-0">
             <DecanterMark className="w-5 h-5 text-gold" />

@@ -5,12 +5,14 @@
    ------------------------------------------------------------------------- */
 @theme inline {
   --color-wine:        #8b2d3f;
-  --color-wine-dark:   #0f0508;
-  --color-wine-mid:    #2a0d14;
+  --color-wine-dark:   #1c0f13;
+  --color-wine-mid:    #2a1a1f;
+  --color-wine-deep:   #3d1a24;
   --color-wine-accent: #c14b65;
-  --color-gold:        #c9a96e;
-  --color-gold-light:  #e5c990;
-  --color-cream:       #f5f0e8;
+  --color-gold:        #c9a84c;
+  --color-gold-light:  #e5d06a;
+  --color-cream:       #f5ede0;
+  --color-muted:       #a08878;
   --color-glass:       rgba(255,255,255,0.06);
 
   --font-sans: var(--font-geist-sans);
@@ -30,8 +32,8 @@ html {
 }
 
 body {
-  background-color: #0f0508;
-  color: #f5f0e8;
+  background-color: #1c0f13;
+  color: #f5ede0;
   font-family: var(--font-sans), system-ui, sans-serif;
   min-height: 100dvh;
 }
@@ -39,6 +41,20 @@ body {
 /* Safe-area inset for iOS */
 .safe-top {
   padding-top: max(1.5rem, env(safe-area-inset-top));
+}
+
+/* -------------------------------------------------------------------------
+   Background gradient sweep (input panel)
+   ------------------------------------------------------------------------- */
+@keyframes gradient-sweep {
+  0%   { background-position: 0% 50% }
+  50%  { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
+.bg-sweep {
+  background: linear-gradient(135deg, #1c0f13 0%, #3d1a24 50%, #1c0f13 100%);
+  background-size: 200% 200%;
+  animation: gradient-sweep 12s ease infinite;
 }
 
 /* -------------------------------------------------------------------------
@@ -88,7 +104,7 @@ body {
   background: #c9a96e;
   cursor: pointer;
   pointer-events: auto;
-  border: 2px solid #0f0508;
+  border: 2px solid #1c0f13;
   box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
   transition: transform 0.15s ease;
 }
@@ -102,6 +118,6 @@ body {
   border-radius: 50%;
   background: #c9a96e;
   cursor: pointer;
-  border: 2px solid #0f0508;
+  border: 2px solid #1c0f13;
   box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
 }

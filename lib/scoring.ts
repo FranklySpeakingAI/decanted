@@ -1,5 +1,23 @@
-export type FoodPairing = "Chicken" | "Beef" | "Fish" | "Vegetarian"
-export type WineRegion = "Bordeaux" | "Burgundy" | "Tuscany" | "Napa" | "Other"
+export type FoodPairing = "Red Meat" | "White Meat" | "Game" | "Fish" | "Vegetarian"
+
+// All canonical region keys the LLM maps to (matches WINE_REGIONS in mockLLM.ts)
+export type WineRegion =
+  // France
+  | "Bordeaux" | "Burgundy" | "Champagne" | "Rhône" | "Alsace" | "Loire"
+  | "Languedoc" | "Provence" | "Jura" | "Beaujolais" | "Southwest France"
+  // Italy
+  | "Tuscany" | "Piedmont" | "Veneto" | "Sicily"
+  // Spain
+  | "Rioja" | "Ribera del Duero" | "Priorat"
+  // Germany & Austria
+  | "Germany" | "Austria"
+  // Switzerland
+  | "Swiss — Vaud" | "Swiss — Valais" | "Swiss — Geneva" | "Swiss — Neuchâtel"
+  // New World
+  | "Napa Valley" | "Sonoma" | "Argentina" | "Chile"
+  | "Australia" | "New Zealand" | "South Africa"
+  | "Other"
+
 export type MarkupColor = "green" | "amber" | "red"
 
 export interface RawWine {
@@ -40,7 +58,7 @@ export function scoreWine(wine: RawWine, index: number): ScoredWine {
   const criticComponent = wine.criticScore * 0.6
   const totalValueScore = Math.round(criticComponent + markupComponent)
 
-  // Updated thresholds: green ≤2.5×, amber 2.5–3.5×, red >3.5×
+  // green ≤2.5×, amber 2.5–3.5×, red >3.5×
   const markupColor: MarkupColor =
     markupFactor <= 2.5 ? "green" : markupFactor <= 3.5 ? "amber" : "red"
 
