@@ -261,6 +261,7 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
   const errors: string[] = []
 
   for (let i = 0; i < chunks.length; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 1_500))
     try {
       console.log(`[LLM] Processing chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`)
       const resp = await callLLM(chunks[i], openaiKey, anthropicKey)
@@ -325,7 +326,7 @@ async function callOpenAI(chunk: string, apiKey: string): Promise<LLMResponse> {
   return parseChunkResponse(data.choices?.[0]?.message?.content ?? "")
 }
 
-async function callAnthropic(chunk: string, apiKey: string): Promise<LLMResponse> {
+async function callAnthropic(chunk: string, apiKey: string, attempt = 0): Promise<LLMResponse> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -341,7 +342,20 @@ async function callAnthropic(chunk: string, apiKey: string): Promise<LLMResponse
     }),
     signal: AbortSignal.timeout(55_000),
   })
-  if (!res.ok) throw new Error(`Anthropic ${res.status}`)
+
+  if (res.status === 429 && attempt < 3) {
+    // Honour Retry-After if present, otherwise exponential backoff
+    const retryAfter = res.headers.get("retry-after")
+    const waitMs = retryAfter ? parseInt(retryAfter) * 1000 : (attempt + 1) * 8_000
+    console.log(`[LLM] 429 rate limit — waiting ${waitMs}ms before retry ${attempt + 1}/3`)
+    await new Promise((r) => setTimeout(r, waitMs))
+    return callAnthropic(chunk, apiKey, attempt + 1)
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "")
+    throw new Error(`Anthropic ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}`)
+  }
   const data = await res.json()
   return parseChunkResponse(data.content?.[0]?.text ?? "")
 }
