@@ -80,7 +80,7 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
     })
     if (!res.ok) return { success: false, error: "Could not access that URL. Please check the address and try again." }
     const rawText = stripHTML(await res.text())
-    content = rawText.slice(0, 24_000)
+    content = rawText.slice(0, 40_000)
     console.log(`[extractTextContent] Extracted ${rawText.length} chars from URL (sending ${content.length})`)
   } catch {
     return { success: false, error: "Could not access that URL. Please check the address and try again." }
@@ -186,7 +186,12 @@ async function extractPDF(buf: Buffer): Promise<string> {
 
   const data = await pdfParse(buf)
 
-  // Warn if extraction produced very little text (likely a scanned/image PDF)
+  if (data.numpages > 15) {
+    throw new Error(
+      `This wine list is too large (${data.numpages} pages). We can scan up to 15 pages — please upload just the wine list section.`,
+    )
+  }
+
   if (data.text.trim().length < 50) {
     throw new Error("PDF appears to contain only images — no extractable text found.")
   }
