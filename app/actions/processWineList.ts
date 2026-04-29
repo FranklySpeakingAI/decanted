@@ -256,9 +256,9 @@ async function extractPDF(buf: Buffer): Promise<string> {
 
   const data = await pdfParse(buf)
 
-  if (data.numpages > 15) {
+  if (data.numpages > 100) {
     throw new Error(
-      `This wine list is too large (${data.numpages} pages). We can scan up to 15 pages — please upload just the wine list section.`,
+      `This PDF is too large (${data.numpages} pages). We can scan up to 100 pages — please upload just the wine list section.`,
     )
   }
 

@@ -372,7 +372,7 @@ async function callEnrichmentModel(
       headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 16000,
+        max_tokens: 32000,
         system: ENRICHMENT_PROMPT,
         messages: [{ role: "user", content: userContent }],
       }),
