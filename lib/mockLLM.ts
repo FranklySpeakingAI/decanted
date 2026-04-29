@@ -250,44 +250,23 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
   }
 
   const provider = openaiKey ? "OpenAI" : "Anthropic"
-  console.log(`[LLM] Using ${provider}`)
 
-  // ~3000 tokens per chunk (~12 000 chars), ~200-token overlap (~800 chars)
-  const chunks = splitIntoChunks(input.content, 12_000, 800)
-  console.log(`[LLM] ${chunks.length} chunk(s) from ${input.content.length} chars`)
+  // Cap at 24 000 chars — enough for any wine list, fits in a single LLM call
+  // that completes in ~4-6 s, well within Vercel Hobby's 10 s function limit.
+  const content = input.content.slice(0, 24_000)
+  console.log(`[LLM] Using ${provider} — ${content.length} chars (single call)`)
 
-  const allWines: RawWine[] = []
-  let detectedCurrency = "CHF"
-  const errors: string[] = []
-
-  for (let i = 0; i < chunks.length; i++) {
-    if (i > 0) await new Promise((r) => setTimeout(r, 1_500))
-    try {
-      console.log(`[LLM] Processing chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`)
-      const resp = await callLLM(chunks[i], openaiKey, anthropicKey)
-      if (resp.currency) detectedCurrency = resp.currency
-      console.log(`[LLM] Chunk ${i + 1} returned ${resp.wines.length} wine(s)`)
-      allWines.push(...resp.wines)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error(`[LLM] Chunk ${i + 1} error:`, msg)
-      errors.push(msg)
-    }
+  try {
+    const resp = await callLLM(content, openaiKey, anthropicKey)
+    const wines = resp.wines.map((w) => ({ ...w, currency: w.currency ?? resp.currency }))
+    console.log(`[LLM] Returned ${wines.length} wines`)
+    if (wines.length === 0) throw new Error("LLM returned no wines")
+    return wines
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error("[LLM] Error:", msg)
+    throw new Error(`LLM extraction failed: ${msg}`)
   }
-
-  const merged = deduplicateWines(allWines).map((w) => ({
-    ...w,
-    currency: w.currency ?? detectedCurrency,
-  }))
-
-  console.log(`[LLM] Total after dedup: ${merged.length} wines`)
-
-  if (merged.length === 0) {
-    const reason = errors.length > 0 ? errors[0] : "LLM returned no wines"
-    throw new Error(`LLM extraction failed: ${reason}`)
-  }
-
-  return merged
 }
 
 // ---------------------------------------------------------------------------
@@ -317,7 +296,7 @@ async function callOpenAI(chunk: string, apiKey: string): Promise<LLMResponse> {
         { role: "user", content: `Extract all wines from this text:\n\n${chunk}` },
       ],
       temperature: 0.1,
-      max_tokens: 8000,
+      max_tokens: 16000,
     }),
     signal: AbortSignal.timeout(55_000),
   })
@@ -336,7 +315,7 @@ async function callAnthropic(chunk: string, apiKey: string, attempt = 0): Promis
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
-      max_tokens: 8000,
+      max_tokens: 16000,
       system: CHUNK_SYSTEM_PROMPT,
       messages: [{ role: "user", content: `Extract all wines from this text:\n\n${chunk}` }],
     }),

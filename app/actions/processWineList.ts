@@ -80,7 +80,7 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
     })
     if (!res.ok) return { success: false, error: "Could not access that URL. Please check the address and try again." }
     const rawText = stripHTML(await res.text())
-    content = rawText.slice(0, 80_000)
+    content = rawText.slice(0, 24_000)
     console.log(`[extractTextContent] Extracted ${rawText.length} chars from URL (sending ${content.length})`)
   } catch {
     return { success: false, error: "Could not access that URL. Please check the address and try again." }
