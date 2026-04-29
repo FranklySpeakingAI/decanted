@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { Link2, FileUp, RotateCcw, AlertCircle } from "lucide-react"
 import { processWineList } from "@/app/actions/processWineList"
 import type { ScoredWine, FoodPairing, WineRegion, WineType } from "@/lib/scoring"
@@ -17,7 +17,9 @@ import { cn } from "@/lib/utils"
 import { APP, UI, ERRORS, DEFAULT_CURRENCY } from "@/lib/constants"
 
 type InputMode = "url" | "file"
+type Theme = "white-wine" | "red-wine"
 
+// ── Decanter SVG mark ─────────────────────────────────────────────────────────
 function DecanterMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 22 28" fill="currentColor" className={className} aria-hidden="true">
@@ -29,6 +31,84 @@ function DecanterMark({ className }: { className?: string }) {
   )
 }
 
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>("white-wine")
+
+  useEffect(() => {
+    const saved = (localStorage.getItem("decanted-theme") ?? "white-wine") as Theme
+    setTheme(saved)
+    document.documentElement.setAttribute("data-theme", saved)
+  }, [])
+
+  function toggle() {
+    const next: Theme = theme === "white-wine" ? "red-wine" : "white-wine"
+    setTheme(next)
+    localStorage.setItem("decanted-theme", next)
+    document.documentElement.setAttribute("data-theme", next)
+  }
+
+  const isWhite = theme === "white-wine"
+
+  return (
+    <button
+      onClick={toggle}
+      suppressHydrationWarning
+      className="theme-toggle"
+      aria-label="Switch wine theme"
+    >
+      <span className={cn("toggle-opt", isWhite && "is-active")}>
+        🥂 <span className="opt-label">White Wine</span>
+      </span>
+      <span className={cn("toggle-opt", !isWhite && "is-active")}>
+        🍷 <span className="opt-label">Red Wine</span>
+      </span>
+    </button>
+  )
+}
+
+// ── Wordmark ──────────────────────────────────────────────────────────────────
+function Wordmark() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center"
+        style={{ background: "rgba(200, 168, 75, 0.15)", boxShadow: "0 0 0 1px rgba(200, 168, 75, 0.25)" }}
+      >
+        <div style={{ color: "var(--accent-primary)" }}>
+          <DecanterMark className="w-4 h-4" />
+        </div>
+      </div>
+      <span
+        className="wordmark text-xl font-semibold tracking-tight"
+        style={{ color: "var(--text-primary)" }}
+      >
+        {APP.name}
+      </span>
+    </div>
+  )
+}
+
+// ── How-It-Works step card ────────────────────────────────────────────────────
+const HOW_IT_WORKS = [
+  {
+    n: "01",
+    title: "Upload your list",
+    body: "Drop a PDF or paste the restaurant URL. We do the rest.",
+  },
+  {
+    n: "02",
+    title: "We analyse every wine",
+    body: "Our AI checks markup, critic scores, and market value across the full list.",
+  },
+  {
+    n: "03",
+    title: "Get your top picks",
+    body: "See the best value bottles ranked for your food, your budget, your taste.",
+  },
+]
+
+// ── Main component ────────────────────────────────────────────────────────────
 export function WineFinder() {
   const [mode, setMode] = useState<InputMode>("url")
   const [isLoading, setIsLoading] = useState(false)
@@ -37,10 +117,7 @@ export function WineFinder() {
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY)
   const [error, setError] = useState<string | null>(null)
 
-  // Primary type filter
   const [selectedType, setSelectedType] = useState<WineType | null>(null)
-
-  // Secondary filters (food pairing, region, price)
   const [filters, setFilters] = useState<Filters>({
     food: null,
     region: null,
@@ -49,7 +126,8 @@ export function WineFinder() {
   })
   const [priceBounds, setPriceBounds] = useState<[number, number] | null>(null)
 
-  // Auto-initialize price slider bounds when wines load
+  const inputCardRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!wines || wines.length === 0) return
     const prices = wines.map((w) => w.restaurantPrice)
@@ -59,7 +137,6 @@ export function WineFinder() {
     setFilters((f) => ({ ...f, priceMin: minP, priceMax: maxP }))
   }, [wines])
 
-  // Types actually present in the result set
   const availableTypes = useMemo((): WineType[] => {
     if (!wines) return []
     const seen = new Set<WineType>()
@@ -67,7 +144,6 @@ export function WineFinder() {
     return Array.from(seen)
   }, [wines])
 
-  // Secondary-filtered wine list (food, region, price)
   const secondaryFiltered = useMemo((): ScoredWine[] => {
     if (!wines) return []
     return wines.filter((w) => {
@@ -82,7 +158,6 @@ export function WineFinder() {
     })
   }, [wines, filters])
 
-  // Top 3: within selectedType if set, else overall, after secondary filters
   const topPicks = useMemo((): ScoredWine[] => {
     const pool = selectedType
       ? secondaryFiltered.filter((w) => w.type === selectedType)
@@ -139,139 +214,309 @@ export function WineFinder() {
   const hasResults = wines !== null && !isLoading
 
   return (
-    <div className="flex flex-col min-h-dvh bg-sweep">
+    <div className="relative">
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Header                                                               */}
-      {/* ------------------------------------------------------------------ */}
-      <header className="safe-top px-5 pb-4 bg-[#160b0f] border-b border-white/5">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center ring-1 ring-gold/20 shrink-0">
-            <DecanterMark className="w-5 h-5 text-gold" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-cream tracking-tight leading-none">
-              {APP.name}
-            </h1>
-            <p className="text-[11px] text-cream/40 leading-none mt-0.5">
-              {APP.tagline}
-            </p>
-          </div>
-          {hasResults && (
-            <div className="ml-auto">
-              <Button variant="ghost" size="sm" onClick={handleReset}>
-                <RotateCcw className="w-3.5 h-3.5" />
-                {UI.newSearch}
-              </Button>
-            </div>
-          )}
-        </div>
+      {/* Theme toggle — always fixed top-right ─────────────────────────── */}
+      <ThemeToggle />
 
-        {/* Type filter pill bar — pinned below header when results are showing */}
-        {hasResults && (
-          <div className="max-w-5xl mx-auto mt-3">
-            <TypeFilterBar
-              availableTypes={availableTypes}
-              selected={selectedType}
-              onChange={setSelectedType}
-            />
-          </div>
-        )}
-      </header>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Input panel                                                           */}
-      {/* ------------------------------------------------------------------ */}
+      {/* ── LANDING PAGE ─────────────────────────────────────────────────── */}
       {!hasResults && !isLoading && (
-        <section className="flex-1 px-5 py-6 max-w-lg mx-auto w-full">
-          <div className="flex gap-1 p-1 bg-black/5 rounded-xl mb-5 border border-stone-300">
-            {(["url", "file"] as InputMode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(null) }}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all",
-                  mode === m
-                    ? "bg-wine-accent/80 text-white shadow-sm"
-                    : "text-stone-400 hover:text-stone-600",
-                )}
+        <>
+          {/* Zone 1 — Hero */}
+          <section className="hero-bg relative min-h-dvh flex flex-col">
+
+            {/* Nav */}
+            <nav className="w-full max-w-6xl mx-auto px-6 pt-6 pb-4 flex items-center">
+              <Wordmark />
+            </nav>
+
+            {/* Hero content */}
+            <div className="flex-1 flex items-center justify-center px-5 py-10">
+              <div className="max-w-2xl mx-auto text-center w-full">
+
+                {/* Eyebrow */}
+                <p
+                  className="text-xs font-semibold tracking-[0.2em] uppercase mb-6"
+                  style={{ color: "var(--accent-primary)" }}
+                >
+                  ✦ AI-Powered Wine Scanner
+                </p>
+
+                {/* Headline */}
+                <h1
+                  className="leading-tight mb-6"
+                  style={{
+                    fontFamily: "'Cormorant Garamond', Georgia, serif",
+                    fontSize: "clamp(40px, 7vw, 64px)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Stop overpaying<br />for wine.
+                </h1>
+
+                {/* Subheadline */}
+                <p
+                  className="text-lg leading-relaxed mb-9 max-w-lg mx-auto"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Upload your restaurant&rsquo;s wine list. Decanted finds the best value
+                  bottles &mdash; ranked by markup, critic score, and what you&rsquo;re eating.
+                </p>
+
+                {/* Benefit pills */}
+                <div className="flex flex-wrap gap-2.5 justify-center mb-10">
+                  {["📄 PDF or URL", "🍷 100+ wines analysed", "⚡ Results in seconds"].map((pill) => (
+                    <span
+                      key={pill}
+                      className="px-4 py-1.5 rounded-full text-sm font-medium"
+                      style={{
+                        background: "var(--bg-glass)",
+                        border: "1px solid var(--accent-border)",
+                        color: "var(--text-muted)",
+                        backdropFilter: "blur(8px)",
+                        WebkitBackdropFilter: "blur(8px)",
+                      }}
+                    >
+                      {pill}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Glass-morphism input card */}
+                <div
+                  ref={inputCardRef}
+                  className="text-left"
+                  style={{
+                    background: "var(--bg-glass)",
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                    border: "1px solid var(--accent-border)",
+                    borderRadius: "16px",
+                    padding: "28px",
+                  }}
+                >
+                  {/* Mode toggle */}
+                  <div
+                    className="flex gap-1 p-1 rounded-xl mb-5"
+                    style={{
+                      background: "rgba(0,0,0,0.06)",
+                      border: "1px solid var(--accent-border)",
+                    }}
+                  >
+                    {(["url", "file"] as InputMode[]).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => { setMode(m); setError(null) }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
+                        style={
+                          mode === m
+                            ? {
+                                background: "var(--pill-active-bg)",
+                                color: "var(--pill-active-text)",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                              }
+                            : { color: "var(--text-muted)" }
+                        }
+                      >
+                        {m === "url"
+                          ? <Link2 className="w-3.5 h-3.5" />
+                          : <FileUp className="w-3.5 h-3.5" />}
+                        {m === "url" ? UI.scanUrl : UI.uploadFile}
+                      </button>
+                    ))}
+                  </div>
+
+                  {mode === "url"
+                    ? <URLInput onSubmit={handleURLSubmit} disabled={isLoading} />
+                    : <FileUpload onSubmit={handleFileSubmit} disabled={isLoading} />}
+
+                  {error && (
+                    <Alert variant="destructive" className="mt-4">
+                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
+                {/* Trust line */}
+                <p className="text-xs mt-5" style={{ color: "var(--text-muted)" }}>
+                  No data stored. No account needed. Scans deleted instantly.
+                </p>
+
+              </div>
+            </div>
+          </section>
+
+          {/* Zone 2 — How It Works */}
+          <section className="px-5 py-24" style={{ background: "var(--bg-surface)" }}>
+            <div className="max-w-4xl mx-auto">
+              <h2
+                className="text-center mb-16 leading-tight"
+                style={{
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontSize: "clamp(28px, 4vw, 42px)",
+                  color: "var(--text-primary)",
+                }}
               >
-                {m === "url"
-                  ? <Link2 className="w-3.5 h-3.5" />
-                  : <FileUp className="w-3.5 h-3.5" />}
-                {m === "url" ? UI.scanUrl : UI.uploadFile}
-              </button>
-            ))}
+                Three steps to your perfect bottle
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {HOW_IT_WORKS.map(({ n, title, body }) => (
+                  <div
+                    key={n}
+                    className="hiw-card rounded-2xl p-7"
+                    style={{
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--accent-border)",
+                      borderTop: "3px solid var(--accent-primary)",
+                    }}
+                  >
+                    <span
+                      className="inline-block text-xs font-bold tracking-widest px-2.5 py-1 rounded-full mb-5"
+                      style={{
+                        background: "var(--accent-primary)",
+                        color: "var(--pill-active-text)",
+                      }}
+                    >
+                      {n}
+                    </span>
+                    <h3
+                      className="font-semibold mb-2.5 leading-snug"
+                      style={{
+                        fontFamily: "'Cormorant Garamond', Georgia, serif",
+                        fontSize: "22px",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      {title}
+                    </h3>
+                    <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      {body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Zone 3 — Mobile sticky CTA */}
+          <div
+            className="md:hidden fixed bottom-0 left-0 right-0 px-4 pt-3 pb-safe z-50"
+            style={{
+              background: "var(--bg-surface)",
+              borderTop: "1px solid var(--accent-border)",
+            }}
+          >
+            <button
+              onClick={() =>
+                inputCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+              className="w-full py-3.5 rounded-xl font-semibold text-base transition-all hover:-translate-y-0.5"
+              style={{
+                background: "var(--accent-primary)",
+                color: "var(--pill-active-text)",
+              }}
+            >
+              Scan Wine List →
+            </button>
           </div>
-
-          {mode === "url"
-            ? <URLInput onSubmit={handleURLSubmit} disabled={isLoading} />
-            : <FileUpload onSubmit={handleFileSubmit} disabled={isLoading} />}
-
-          {error && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </section>
+        </>
       )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Loading                                                               */}
-      {/* ------------------------------------------------------------------ */}
+      {/* ── LOADING ──────────────────────────────────────────────────────── */}
       {isLoading && (
-        <div className="flex-1 flex items-center justify-center">
+        <div
+          className="min-h-dvh flex items-center justify-center"
+          style={{ background: "var(--bg-base)" }}
+        >
           <LoadingState startedAt={loadingStartedAt} />
         </div>
       )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Results                                                              */}
-      {/* ------------------------------------------------------------------ */}
+      {/* ── RESULTS ──────────────────────────────────────────────────────── */}
       {hasResults && (
-        <section className="flex-1 px-5 pb-12 pt-6 max-w-5xl mx-auto w-full space-y-8">
+        <div className="flex flex-col min-h-dvh" style={{ background: "var(--bg-base)" }}>
 
-          {/* Found count headline */}
-          <div>
-            <h2 className="text-sm font-semibold text-stone-800">
-              {UI.foundWines(wines!.length)}
-            </h2>
-          </div>
-
-          {/* Secondary filters */}
-          <div className="p-4 rounded-2xl border border-stone-200 bg-white shadow-sm">
-            <FilterBar
-              filters={filters}
-              onChange={setFilters}
-              priceBounds={priceBounds}
-              currency={currency}
-            />
-          </div>
-
-          {/* Section A — Top 3 Hero Cards */}
-          {topPicks.length === 0 ? (
-            <div className="text-center py-16 text-stone-400">
-              <DecanterMark className="w-10 h-10 mx-auto mb-4 opacity-30" />
-              <p className="text-sm">{UI.noWinesMatch}</p>
-              <p className="text-xs mt-1">{UI.adjustFilters}</p>
+          {/* Results header */}
+          <header
+            className="safe-top px-5 pb-4 border-b"
+            style={{
+              background: "var(--bg-surface)",
+              borderColor: "var(--accent-border)",
+            }}
+          >
+            <div className="max-w-5xl mx-auto flex items-center gap-3">
+              <Wordmark />
+              <div className="ml-auto">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReset}
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  {UI.newSearch}
+                </Button>
+              </div>
             </div>
-          ) : (
+
+            <div className="max-w-5xl mx-auto mt-3">
+              <TypeFilterBar
+                availableTypes={availableTypes}
+                selected={selectedType}
+                onChange={setSelectedType}
+              />
+            </div>
+          </header>
+
+          {/* Results body */}
+          <section className="flex-1 px-5 pb-12 pt-6 max-w-5xl mx-auto w-full space-y-8">
+
             <div>
-              <p className="text-[11px] text-stone-400 uppercase tracking-widest font-semibold mb-3">
-                {UI.topPicks}
-              </p>
-              <TopPicksSection wines={topPicks} currency={currency} />
+              <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                {UI.foundWines(wines!.length)}
+              </h2>
             </div>
-          )}
 
-          {/* Section B — Full Wine List */}
-          <FullWineList
-            wines={secondaryFiltered}
-            currency={currency}
-            selectedType={selectedType}
-          />
-        </section>
+            <div
+              className="p-4 rounded-2xl border shadow-sm"
+              style={{ background: "var(--bg-card)", borderColor: "var(--accent-border)" }}
+            >
+              <FilterBar
+                filters={filters}
+                onChange={setFilters}
+                priceBounds={priceBounds}
+                currency={currency}
+              />
+            </div>
+
+            {topPicks.length === 0 ? (
+              <div className="text-center py-16" style={{ color: "var(--text-muted)" }}>
+                <div style={{ color: "var(--accent-primary)" }}>
+                  <DecanterMark className="w-10 h-10 mx-auto mb-4 opacity-30" />
+                </div>
+                <p className="text-sm">{UI.noWinesMatch}</p>
+                <p className="text-xs mt-1">{UI.adjustFilters}</p>
+              </div>
+            ) : (
+              <div>
+                <p
+                  className="text-[11px] uppercase tracking-widest font-semibold mb-3"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {UI.topPicks}
+                </p>
+                <TopPicksSection wines={topPicks} currency={currency} />
+              </div>
+            )}
+
+            <FullWineList
+              wines={secondaryFiltered}
+              currency={currency}
+              selectedType={selectedType}
+            />
+          </section>
+        </div>
       )}
     </div>
   )

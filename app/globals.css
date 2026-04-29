@@ -1,8 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
-/* -------------------------------------------------------------------------
-   Design tokens
-   ------------------------------------------------------------------------- */
+/* ── Theme tokens ─────────────────────────────────────────────────────────── */
+
+:root,
+[data-theme="white-wine"] {
+  --bg-base:         #f5f0e8;
+  --bg-surface:      #ede4d0;
+  --bg-glass:        rgba(237, 228, 208, 0.75);
+  --bg-card:         #faf6ee;
+  --text-primary:    #3d3420;
+  --text-muted:      #8a7d5a;
+  --accent-primary:  #c8a84b;
+  --accent-lavender: #9b8fbf;
+  --accent-sage:     #7a9b76;
+  --accent-border:   rgba(155, 143, 191, 0.30);
+  --pill-active-bg:  #c8a84b;
+  --pill-active-text:#3d3420;
+}
+
+[data-theme="red-wine"] {
+  --bg-base:         #1e0f0a;
+  --bg-surface:      #2c1a12;
+  --bg-glass:        rgba(44, 26, 18, 0.70);
+  --bg-card:         #341f15;
+  --text-primary:    #f2e8d9;
+  --text-muted:      #9c7d65;
+  --accent-primary:  #c8a84b;
+  --accent-green:    #4a6b45;
+  --accent-rust:     #a85432;
+  --accent-border:   rgba(200, 168, 75, 0.20);
+  --pill-active-bg:  #c8a84b;
+  --pill-active-text:#1e0f0a;
+}
+
+/* ── Tailwind design tokens (keep for existing result/loading components) ──── */
 @theme inline {
   --color-wine:        #8b2d3f;
   --color-wine-dark:   #1c0f13;
@@ -19,9 +51,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* -------------------------------------------------------------------------
-   Base
-   ------------------------------------------------------------------------- */
+/* ── Base reset ───────────────────────────────────────────────────────────── */
+
 *,
 *::before,
 *::after { box-sizing: border-box; }
@@ -29,63 +60,169 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body {
-  background-color: #f5ece0;
-  color: #1a0d10;
-  font-family: var(--font-sans), system-ui, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', var(--font-geist-sans), system-ui, sans-serif;
   min-height: 100dvh;
 }
 
-/* Safe-area inset for iOS */
+/* Subtle noise texture overlay — makes flat surfaces feel tactile */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* Typography */
+h1, h2, h3, .wordmark {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+/* Safe-area insets for iOS */
 .safe-top {
   padding-top: max(1.5rem, env(safe-area-inset-top));
 }
 
-/* -------------------------------------------------------------------------
-   Background gradient sweep (input panel)
-   ------------------------------------------------------------------------- */
-@keyframes gradient-sweep {
-  0%   { background-position: 0% 50% }
-  50%  { background-position: 100% 50% }
-  100% { background-position: 0% 50% }
-}
-.bg-sweep {
-  background: linear-gradient(135deg, #f5ece0 0%, #edddd0 50%, #f5ece0 100%);
-  background-size: 200% 200%;
-  animation: gradient-sweep 12s ease infinite;
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
-/* -------------------------------------------------------------------------
-   Fade-in animation for result cards
-   ------------------------------------------------------------------------- */
+/* ── Hero animated background ─────────────────────────────────────────────── */
+
+@keyframes wine-pulse {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hero-bg {
+  background: linear-gradient(
+    135deg,
+    var(--bg-base)    0%,
+    var(--bg-surface) 25%,
+    var(--bg-base)    50%,
+    var(--bg-surface) 75%,
+    var(--bg-base)    100%
+  );
+  background-size: 400% 400%;
+  animation: wine-pulse 20s ease infinite;
+  will-change: background-position;
+}
+
+/* ── Theme toggle pill ────────────────────────────────────────────────────── */
+
+.theme-toggle {
+  position: fixed;
+  top: 1.1rem;
+  right: 1.1rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid var(--accent-border);
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.theme-toggle:hover {
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+.toggle-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: 9999px;
+  transition: background 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.toggle-opt .opt-label {
+  display: none;
+}
+
+.toggle-opt.is-active {
+  background: var(--pill-active-bg);
+  color: var(--pill-active-text);
+}
+
+.toggle-opt.is-active .opt-label {
+  display: inline;
+}
+
+/* ── How-It-Works card hover ──────────────────────────────────────────────── */
+
+.hiw-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hiw-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Fade-in for result cards ─────────────────────────────────────────────── */
+
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 .animate-fade-in-up {
   animation: fade-in-up 0.45s ease-out both;
 }
 
-/* -------------------------------------------------------------------------
-   Progress bar animation (25 s simulated scan)
-   ------------------------------------------------------------------------- */
-@keyframes scan-progress {
-  0%   { width: 0% }
-  8%   { width: 18% }
-  25%  { width: 38% }
-  55%  { width: 62% }
-  85%  { width: 82% }
-  100% { width: 88% }
+/* ── bg-sweep (kept for backwards compat) ─────────────────────────────────── */
+
+@keyframes gradient-sweep {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
+
+.bg-sweep {
+  background: linear-gradient(135deg, var(--bg-base) 0%, var(--bg-surface) 50%, var(--bg-base) 100%);
+  background-size: 200% 200%;
+  animation: gradient-sweep 12s ease infinite;
+}
+
+/* ── Progress bar (loading screen) ───────────────────────────────────────── */
+
+@keyframes scan-progress {
+  0%   { width: 0%; }
+  8%   { width: 18%; }
+  25%  { width: 38%; }
+  55%  { width: 62%; }
+  85%  { width: 82%; }
+  100% { width: 88%; }
+}
+
 .progress-bar {
   animation: scan-progress 25s cubic-bezier(0.15, 0.5, 0.4, 1) forwards;
 }
 
-/* -------------------------------------------------------------------------
-   Dual-range slider thumbs
-   ------------------------------------------------------------------------- */
+/* ── Dual-range slider thumbs ─────────────────────────────────────────────── */
+
 .range-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -95,29 +232,32 @@ body {
   width: 100%;
   height: 0;
 }
+
 .range-thumb::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #c9a96e;
+  background: var(--accent-primary);
   cursor: pointer;
   pointer-events: auto;
-  border: 2px solid #f5ece0;
-  box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
+  border: 2px solid var(--bg-base);
+  box-shadow: 0 0 0 1px rgba(200, 168, 75, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
   transition: transform 0.15s ease;
 }
+
 .range-thumb::-webkit-slider-thumb:hover,
 .range-thumb:active::-webkit-slider-thumb {
   transform: scale(1.2);
 }
+
 .range-thumb::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #c9a96e;
+  background: var(--accent-primary);
   cursor: pointer;
-  border: 2px solid #f5ece0;
-  box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
+  border: 2px solid var(--bg-base);
+  box-shadow: 0 0 0 1px rgba(200, 168, 75, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
 }
