@@ -181,9 +181,23 @@ function extractWineLines(rawText: string): string[] {
 // Layer 2A prompt — compact, for cheap/fast model
 // ---------------------------------------------------------------------------
 const EXTRACTION_PROMPT =
-  `You are a wine list parser. Extract wines from these candidate lines.
+  `You are a wine list parser. Extract all wines from the provided text.
 Return a JSON array. Each element: {"name":string,"vintage":number|null,"menuPrice":number,"type":"Red"|"White"|"Rosé"|"Champagne"|"Sparkling"|"Dessert"|"Non-Alcoholic","region":string}.
-Normalise menuPrice to per-bottle (75cl): "dl X" → X×7.5, bare number → bottle price.
+
+Price rules — always extract the 75cl bottle price:
+- Three-column Swiss format ("1 dl  7.5 dl  Mitnahme"): a price line like "2023 10.50 71.00 28.00" → vintage=2023, menuPrice=71.00 (the SECOND price = 7.5dl bottle price).
+- Explicit format "0.5 dl · X | 1 dl · Y | 7.5 dl · Z" → use Z.
+- "dl X" notation alone → multiply X by 7.5.
+- Single bare number → that is the bottle price.
+
+Wine type from section headers in any language:
+- Schaumweine / Champagne / Prosecco / Sekt / Crémant / Cava / Mousseux → Sparkling (use Champagne only if region is Champagne, France)
+- Weissweine / Blanc / Bianco / Blanco / White → White
+- Rotweine / Rouge / Rosso / Tinto / Red → Red
+- Roséweine / Rosé / Rosato → Rosé
+- Dessertweine / Doux / Dolce / Sauternes → Dessert
+
+Skip: non-alcoholic drinks, soft drinks, food items, header/footer text, score abbreviations, legend lines.
 Return ONLY a valid JSON array. No prose, no markdown, no explanation.`
 
 // ---------------------------------------------------------------------------
@@ -410,7 +424,15 @@ function parseExtractionResponse(text: string): ExtractedWine[] {
 function parseEnrichmentResponse(text: string): LLMResponse {
   const objStart = text.indexOf("{")
   if (objStart === -1) throw new Error("No JSON in enrichment response")
-  const parsed = JSON.parse(text.slice(objStart))
+  // Find the matching closing brace via bracket counting so trailing prose doesn't break JSON.parse
+  let depth = 0
+  let objEnd = -1
+  for (let i = objStart; i < text.length; i++) {
+    if (text[i] === "{") depth++
+    else if (text[i] === "}") { depth--; if (depth === 0) { objEnd = i; break } }
+  }
+  const jsonSlice = objEnd !== -1 ? text.slice(objStart, objEnd + 1) : text.slice(objStart)
+  const parsed = JSON.parse(jsonSlice)
   if (!Array.isArray(parsed?.wines)) throw new Error("Unexpected enrichment response shape")
   const currency = String(parsed.currency ?? "CHF")
   return { currency, wines: parsed.wines.map((w: Record<string, unknown>) => mapEnrichedWine(w, currency)) }
