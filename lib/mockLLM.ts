@@ -222,17 +222,26 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
 
   const provider = openaiKey ? "OpenAI" : "Anthropic"
 
-  // Layer 1: pre-filter (free)
   const truncated = input.content.slice(0, LIMITS.maxExtractedChars)
-  const wineLines = extractWineLines(truncated)
-  console.log(`[LLM] Layer 1: ${truncated.length} chars → ${wineLines.length} candidate lines`)
 
-  if (wineLines.length === 0) {
-    throw new Error("No wine lines detected. Please check that the document contains a wine list.")
+  // Layer 1: regex pre-filter — only worth running on large docs.
+  // For small docs (<12 k chars) skip it: stripped HTML often loses the
+  // newlines that separate name from price, so the filter over-discards.
+  let inputForExtraction: string
+  if (truncated.length < 12_000) {
+    inputForExtraction = truncated
+    console.log(`[LLM] Layer 1 skipped (${truncated.length} chars) — sending full text`)
+  } else {
+    const wineLines = extractWineLines(truncated)
+    console.log(`[LLM] Layer 1: ${truncated.length} chars → ${wineLines.length} candidate lines`)
+    if (wineLines.length === 0) {
+      throw new Error("No wine lines detected. Please check that the document contains a wine list.")
+    }
+    inputForExtraction = wineLines.join("\n")
   }
 
   // Layer 2A: cheap model — parse lines into structured JSON
-  const extractedRaw = await callExtractionModel(wineLines.join("\n"), openaiKey, anthropicKey)
+  const extractedRaw = await callExtractionModel(inputForExtraction, openaiKey, anthropicKey)
   const extracted = deduplicateExtracted(extractedRaw).slice(0, LIMITS.maxWinesForRanking)
   console.log(`[LLM] Layer 2A (${provider}): ${extracted.length} wines parsed`)
 
