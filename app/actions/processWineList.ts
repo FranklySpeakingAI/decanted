@@ -72,7 +72,7 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
     return { success: false, error: "Only http and https URLs are supported." }
   }
 
-  let content: string
+  let content = ""
   let isHTML = false
   try {
     const res = await fetch(raw, {
@@ -99,9 +99,52 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
       }
     } else {
       isHTML = true
-      const rawText = stripHTML(await res.text())
-      content = rawText.slice(0, 40_000)
-      console.log(`[extractTextContent] HTML from URL: ${rawText.length} chars raw → ${content.length} sent`)
+      const rawHtml = await res.text()
+      const { pdfs, pages } = extractLinksFromHTML(rawHtml, raw)
+
+      // Step 1: try wine-scored PDFs linked directly on this page
+      for (const { url: pdfUrl, score } of pdfs.slice(0, 2)) {
+        if (score < 2) break
+        const text = await tryFetchPDF(pdfUrl)
+        if (text) {
+          content = text
+          isHTML = false
+          console.log(`[URL scan] Wine PDF on page: ${pdfUrl} — ${text.length} chars`)
+          break
+        }
+      }
+
+      // Step 2: follow wine-flagged sub-pages and try their PDFs
+      if (isHTML) {
+        for (const { url: pageUrl, score } of pages.slice(0, 3)) {
+          if (score < 2) break
+          try {
+            const subRes = await fetch(pageUrl, {
+              headers: { "User-Agent": "DecantedBot/1.0 (+https://decanted.vercel.app)" },
+              signal: AbortSignal.timeout(8_000),
+            })
+            if (!subRes.ok) continue
+            const { pdfs: subPDFs } = extractLinksFromHTML(await subRes.text(), pageUrl)
+            for (const { url: pdfUrl } of subPDFs.slice(0, 2)) {
+              const text = await tryFetchPDF(pdfUrl)
+              if (text) {
+                content = text
+                isHTML = false
+                console.log(`[URL scan] PDF via sub-page ${pageUrl}: ${pdfUrl} — ${text.length} chars`)
+                break
+              }
+            }
+            if (!isHTML) break
+          } catch { continue }
+        }
+      }
+
+      // Step 3: fall back to stripped HTML text
+      if (isHTML) {
+        const rawText = stripHTML(rawHtml)
+        content = rawText.slice(0, 40_000)
+        console.log(`[extractTextContent] HTML from URL: ${rawText.length} chars raw → ${content.length} sent`)
+      }
     }
   } catch {
     return { success: false, error: "Could not access that URL. Please check the address and try again." }
@@ -117,7 +160,7 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
     if (isHTML && msg.includes("Could not parse any wines")) {
       return {
         success: false,
-        error: "No wine list found on that page. Most restaurants publish their wine list as a PDF — paste the direct PDF link instead (look for a download or wine list link on their site).",
+        error: "No wine list found on that page. Try pasting the direct link to their wine list or PDF.",
       }
     }
     return { success: false, error: msg }
@@ -239,6 +282,66 @@ async function extractXLSX(buf: Buffer): Promise<string> {
     const sheet = workbook.Sheets[name]
     return `--- Sheet: ${name} ---\n${XLSX.utils.sheet_to_csv(sheet)}`
   }).join("\n\n")
+}
+
+// ---------------------------------------------------------------------------
+// HTML link discovery — finds PDF and same-host page links, scored by
+// wine-related context (URL path, title attribute, anchor text).
+// Score 2 = wine-flagged, score 1 = generic.
+// ---------------------------------------------------------------------------
+const WINE_LINK_RE = /wein|wine|vino|karte|vinothek|offenwein|speisewein|vins|boisson|drinks?|beverage/i
+const SKIP_LINK_RE = /datenschutz|impressum|agb|cookie|gutschein|privacy|favicon|\.css|\.js/i
+
+interface DiscoveredLink { url: string; score: number }
+
+function extractLinksFromHTML(html: string, baseURL: string): { pdfs: DiscoveredLink[]; pages: DiscoveredLink[] } {
+  const base = new URL(baseURL)
+  const pdfs = new Map<string, number>()
+  const pages = new Map<string, number>()
+  const anchorRe = /<a\s[^>]*>/gi
+  let m: RegExpExecArray | null
+  while ((m = anchorRe.exec(html)) !== null) {
+    const tag = m[0]
+    const hrefMatch = /href=["']([^"']+)["']/.exec(tag)
+    if (!hrefMatch) continue
+    const href = hrefMatch[1]
+    if (/^[#?]|^javascript:|^tel:|^mailto:/i.test(href)) continue
+    if (SKIP_LINK_RE.test(href)) continue
+    let url: URL
+    try { url = new URL(href, baseURL) } catch { continue }
+    if (!["http:", "https:"].includes(url.protocol)) continue
+    const titleMatch = /title=["']([^"']*)["']/.exec(tag)
+    const afterTag = html.slice(m.index + tag.length, m.index + tag.length + 80)
+    const anchorText = afterTag.replace(/<[^>]+>/g, "").slice(0, 60)
+    const context = `${titleMatch?.[1] ?? ""} ${anchorText} ${url.pathname}`
+    const isPDF = url.pathname.toLowerCase().endsWith(".pdf")
+    const score = WINE_LINK_RE.test(context) ? 2 : 1
+    if (isPDF) {
+      pdfs.set(url.href, Math.max(pdfs.get(url.href) ?? 0, score))
+    } else if (url.hostname === base.hostname) {
+      url.hash = ""
+      const key = url.href
+      if (key !== base.href.split("#")[0]) pages.set(key, Math.max(pages.get(key) ?? 0, score))
+    }
+  }
+  const sorted = (map: Map<string, number>): DiscoveredLink[] =>
+    [...map.entries()].sort((a, b) => b[1] - a[1]).map(([url, score]) => ({ url, score }))
+  return { pdfs: sorted(pdfs), pages: sorted(pages) }
+}
+
+async function tryFetchPDF(pdfUrl: string): Promise<string | null> {
+  try {
+    const parsed = new URL(pdfUrl)
+    if (!["http:", "https:"].includes(parsed.protocol)) return null
+    const res = await fetch(pdfUrl, {
+      headers: { "User-Agent": "DecantedBot/1.0 (+https://decanted.vercel.app)" },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return null
+    return await extractPDF(Buffer.from(await res.arrayBuffer()))
+  } catch {
+    return null
+  }
 }
 
 // ---------------------------------------------------------------------------
