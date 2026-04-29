@@ -76,12 +76,31 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
   try {
     const res = await fetch(raw, {
       headers: { "User-Agent": "DecantedBot/1.0 (+https://decanted.vercel.app)" },
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(15_000),
     })
     if (!res.ok) return { success: false, error: "Could not access that URL. Please check the address and try again." }
-    const rawText = stripHTML(await res.text())
-    content = rawText.slice(0, 40_000)
-    console.log(`[extractTextContent] Extracted ${rawText.length} chars from URL (sending ${content.length})`)
+
+    const contentType = res.headers.get("content-type") ?? ""
+    const isPDF = contentType.includes("application/pdf") ||
+                  parsed.pathname.toLowerCase().endsWith(".pdf")
+
+    if (isPDF) {
+      // Binary PDF at a URL — pipe through pdf-parse, same as file upload
+      const buf = Buffer.from(await res.arrayBuffer())
+      try {
+        content = await extractPDF(buf)
+        console.log(`[extractTextContent] PDF from URL: ${content.length} chars`)
+      } catch (err) {
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : "Could not read that PDF.",
+        }
+      }
+    } else {
+      const rawText = stripHTML(await res.text())
+      content = rawText.slice(0, 40_000)
+      console.log(`[extractTextContent] HTML from URL: ${rawText.length} chars raw → ${content.length} sent`)
+    }
   } catch {
     return { success: false, error: "Could not access that URL. Please check the address and try again." }
   }
