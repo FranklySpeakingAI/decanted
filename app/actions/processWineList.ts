@@ -73,6 +73,7 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
   }
 
   let content: string
+  let isHTML = false
   try {
     const res = await fetch(raw, {
       headers: { "User-Agent": "DecantedBot/1.0 (+https://decanted.vercel.app)" },
@@ -97,6 +98,7 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
         }
       }
     } else {
+      isHTML = true
       const rawText = stripHTML(await res.text())
       content = rawText.slice(0, 40_000)
       console.log(`[extractTextContent] HTML from URL: ${rawText.length} chars raw → ${content.length} sent`)
@@ -112,6 +114,12 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "LLM call failed"
     console.error("[processURL] LLM error:", msg)
+    if (isHTML && msg.includes("Could not parse any wines")) {
+      return {
+        success: false,
+        error: "No wine list found on that page. Most restaurants publish their wine list as a PDF — paste the direct PDF link instead (look for a download or wine list link on their site).",
+      }
+    }
     return { success: false, error: msg }
   }
 }
