@@ -38,11 +38,11 @@ export function URLInput({ onSubmit, disabled }: URLInputProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-1.5">
-        <label htmlFor="url-input" className="text-[10px] font-bold uppercase tracking-widest text-cream/35">
+        <label htmlFor="url-input" className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
           Restaurant website URL
         </label>
         <div className="relative">
-          <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-cream/30" />
+          <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <Input
             id="url-input"
             type="url"
@@ -55,7 +55,7 @@ export function URLInput({ onSubmit, disabled }: URLInputProps) {
             inputMode="url"
           />
         </div>
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-rose-500">{error}</p>}
       </div>
       <Button type="submit" className="w-full" size="lg" disabled={disabled || !url.trim()}>
         <Search className="w-4 h-4" />

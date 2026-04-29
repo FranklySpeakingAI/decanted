@@ -53,7 +53,7 @@ interface FilterBarProps {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[9px] font-bold uppercase tracking-widest text-cream/30 mb-2">
+    <p className="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-2">
       {children}
     </p>
   )

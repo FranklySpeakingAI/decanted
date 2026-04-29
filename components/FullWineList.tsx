@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils"
 import { TYPE_ORDER } from "@/components/TypeFilterBar"
 
 const MARKUP_DOT: Record<string, string> = {
-  green: "bg-emerald-400",
-  amber: "bg-amber-400",
-  red:   "bg-rose-400",
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red:   "bg-rose-500",
 }
 
 interface FullWineListProps {
@@ -19,7 +19,6 @@ interface FullWineListProps {
 }
 
 export function FullWineList({ wines, currency, selectedType }: FullWineListProps) {
-  // Build groups in canonical order; only types present in the wine list
   const groups = TYPE_ORDER
     .map((type) => ({
       type,
@@ -38,11 +37,11 @@ export function FullWineList({ wines, currency, selectedType }: FullWineListProp
   return (
     <div>
       <div className="flex items-center gap-3 mb-4">
-        <div className="flex-1 h-px bg-white/8" />
-        <span className="text-[11px] text-cream/30 uppercase tracking-widest font-semibold whitespace-nowrap">
+        <div className="flex-1 h-px bg-stone-200" />
+        <span className="text-[11px] text-stone-400 uppercase tracking-widest font-semibold whitespace-nowrap">
           All {wines.length} wines found
         </span>
-        <div className="flex-1 h-px bg-white/8" />
+        <div className="flex-1 h-px bg-stone-200" />
       </div>
 
       <div className="space-y-2">
@@ -74,25 +73,25 @@ function WineTypeGroup({
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className="rounded-xl border border-white/8 bg-white/3 overflow-hidden">
+    <div className="rounded-xl border border-stone-200 bg-white overflow-hidden shadow-sm">
       {/* Group header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/4 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-stone-50 transition-colors"
       >
         <div className="flex items-center gap-2">
           {open
-            ? <ChevronDown className="w-3.5 h-3.5 text-cream/30" />
-            : <ChevronRight className="w-3.5 h-3.5 text-cream/30" />}
-          <span className="text-sm font-semibold text-cream/80">{type}</span>
-          <span className="text-xs text-cream/35">— {wines.length} {wines.length === 1 ? "wine" : "wines"}</span>
+            ? <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
+            : <ChevronRight className="w-3.5 h-3.5 text-stone-400" />}
+          <span className="text-sm font-semibold text-stone-700">{type}</span>
+          <span className="text-xs text-stone-400">— {wines.length} {wines.length === 1 ? "wine" : "wines"}</span>
         </div>
-        <span className="text-[10px] text-cream/25">sorted by value</span>
+        <span className="text-[10px] text-stone-400">sorted by value</span>
       </button>
 
       {/* Wine rows */}
       {open && (
-        <div className="border-t border-white/8 divide-y divide-white/5">
+        <div className="border-t border-stone-100 divide-y divide-stone-100">
           {wines.map((wine) => (
             <WineRow key={wine.id} wine={wine} currency={currency} />
           ))}
@@ -110,24 +109,24 @@ function WineRow({ wine, currency }: { wine: ScoredWine; currency: string }) {
 
       {/* Name + vintage */}
       <div className="flex-1 min-w-0">
-        <span className="text-sm text-cream/90 font-medium truncate block">{wine.name}</span>
+        <span className="text-sm text-stone-800 font-medium truncate block">{wine.name}</span>
         {wine.vintage && (
-          <span className="text-[11px] text-cream/35">{wine.vintage}</span>
+          <span className="text-[11px] text-stone-400">{wine.vintage}</span>
         )}
       </div>
 
       {/* Menu price */}
-      <span className="text-xs text-cream/60 shrink-0">
+      <span className="text-xs text-stone-500 shrink-0">
         {currency} {wine.restaurantPrice}
       </span>
 
       {/* Markup */}
-      <span className="text-xs text-cream/40 shrink-0 w-10 text-right">
+      <span className="text-xs text-stone-400 shrink-0 w-10 text-right">
         {wine.markupFactor.toFixed(1)}×
       </span>
 
       {/* Critic score */}
-      <span className="text-xs text-cream/40 shrink-0 w-12 text-right">
+      <span className="text-xs text-stone-400 shrink-0 w-12 text-right">
         {wine.criticScore ? `${wine.criticScore}pts` : "—"}
       </span>
     </div>

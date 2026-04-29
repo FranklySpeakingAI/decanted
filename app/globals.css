@@ -32,8 +32,8 @@ html {
 }
 
 body {
-  background-color: #1c0f13;
-  color: #f5ede0;
+  background-color: #f5ece0;
+  color: #1a0d10;
   font-family: var(--font-sans), system-ui, sans-serif;
   min-height: 100dvh;
 }
@@ -52,7 +52,7 @@ body {
   100% { background-position: 0% 50% }
 }
 .bg-sweep {
-  background: linear-gradient(135deg, #1c0f13 0%, #3d1a24 50%, #1c0f13 100%);
+  background: linear-gradient(135deg, #f5ece0 0%, #edddd0 50%, #f5ece0 100%);
   background-size: 200% 200%;
   animation: gradient-sweep 12s ease infinite;
 }
@@ -104,7 +104,7 @@ body {
   background: #c9a96e;
   cursor: pointer;
   pointer-events: auto;
-  border: 2px solid #1c0f13;
+  border: 2px solid #f5ece0;
   box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
   transition: transform 0.15s ease;
 }
@@ -118,6 +118,6 @@ body {
   border-radius: 50%;
   background: #c9a96e;
   cursor: pointer;
-  border: 2px solid #1c0f13;
+  border: 2px solid #f5ece0;
   box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
 }

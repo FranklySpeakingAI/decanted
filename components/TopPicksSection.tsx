@@ -4,15 +4,15 @@ import type { ScoredWine } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 
 const MARKUP_DOT: Record<string, string> = {
-  green: "bg-emerald-400",
-  amber: "bg-amber-400",
-  red:   "bg-rose-400",
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red:   "bg-rose-500",
 }
 
 const MARKUP_TEXT: Record<string, string> = {
-  green: "text-emerald-300",
-  amber: "text-amber-300",
-  red:   "text-rose-300",
+  green: "text-emerald-600",
+  amber: "text-amber-600",
+  red:   "text-rose-600",
 }
 
 interface TopPicksSectionProps {
@@ -52,8 +52,8 @@ function HeroCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-3 rounded-2xl p-5 border bg-white/5 backdrop-blur-md h-full",
-        rank === 1 ? "ring-2 ring-amber-400/50 border-amber-400/20" : "border-white/8",
+        "relative flex flex-col gap-3 rounded-2xl p-5 border bg-white h-full shadow-sm",
+        rank === 1 ? "ring-2 ring-amber-400/60 border-amber-300" : "border-stone-200",
       )}
     >
       {/* Rank pill */}
@@ -63,8 +63,8 @@ function HeroCard({
           rank === 1
             ? "bg-amber-400 text-black"
             : rank === 2
-            ? "bg-white/20 text-cream"
-            : "bg-white/12 text-cream/70",
+            ? "bg-stone-200 text-stone-600"
+            : "bg-stone-100 text-stone-500",
         )}
       >
         {rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"}
@@ -73,15 +73,15 @@ function HeroCard({
       {/* Identity */}
       <div className="pt-1">
         <h3 className="text-lg font-bold text-gold leading-snug">{wine.name}</h3>
-        <p className="text-xs text-cream/55 mt-0.5">{wine.producer}</p>
+        <p className="text-xs text-stone-500 mt-0.5">{wine.producer}</p>
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           {wine.vintage && (
-            <span className="text-[11px] text-cream/40">{wine.vintage}</span>
+            <span className="text-[11px] text-stone-400">{wine.vintage}</span>
           )}
-          <span className="rounded-full bg-white/8 border border-white/10 px-2 py-0.5 text-[10px] text-cream/60">
+          <span className="rounded-full bg-stone-100 border border-stone-200 px-2 py-0.5 text-[10px] text-stone-500">
             {wine.region}
           </span>
-          <span className="rounded-full bg-gold/15 border border-gold/20 px-2 py-0.5 text-[10px] text-gold/80 font-medium">
+          <span className="rounded-full bg-gold/15 border border-gold/25 px-2 py-0.5 text-[10px] text-gold font-medium">
             {wine.type}
           </span>
         </div>
@@ -93,8 +93,8 @@ function HeroCard({
         <MetricCell label="Est. market" value={`~${currency} ${wine.marketPrice}`} />
 
         {/* Markup */}
-        <div className="flex flex-col gap-0.5 p-2.5 rounded-xl border border-white/8 bg-white/4">
-          <span className="text-[9px] uppercase tracking-widest text-cream/40 font-semibold">
+        <div className="flex flex-col gap-0.5 p-2.5 rounded-xl border border-stone-100 bg-stone-50">
+          <span className="text-[9px] uppercase tracking-widest text-stone-400 font-semibold">
             Markup
           </span>
           <div className="flex items-center gap-1.5">
@@ -114,7 +114,7 @@ function HeroCard({
 
       {/* Sommelier note */}
       {wine.sommelierNote && (
-        <p className="text-xs text-cream/50 italic leading-relaxed border-t border-white/8 pt-3 mt-auto">
+        <p className="text-xs text-stone-500 italic leading-relaxed border-t border-stone-100 pt-3 mt-auto">
           {wine.sommelierNote}
         </p>
       )}
@@ -124,11 +124,11 @@ function HeroCard({
 
 function MetricCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5 p-2.5 rounded-xl border border-white/8 bg-white/4">
-      <span className="text-[9px] uppercase tracking-widest text-cream/40 font-semibold">
+    <div className="flex flex-col gap-0.5 p-2.5 rounded-xl border border-stone-100 bg-stone-50">
+      <span className="text-[9px] uppercase tracking-widest text-stone-400 font-semibold">
         {label}
       </span>
-      <span className="text-sm font-bold leading-none text-cream">{value}</span>
+      <span className="text-sm font-bold leading-none text-stone-900">{value}</span>
     </div>
   )
 }

@@ -48,21 +48,21 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (file) onSubmit(file) }} className="space-y-3">
       <div className="space-y-1.5">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-cream/35">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
           Upload wine list
         </span>
 
         {file ? (
-          <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-            <FileText className="w-5 h-5 text-emerald-400 shrink-0" />
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
+            <FileText className="w-5 h-5 text-emerald-600 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-cream truncate">{file.name}</p>
-              <p className="text-xs text-cream/35">{(file.size / 1024).toFixed(0)} KB</p>
+              <p className="text-sm font-medium text-stone-800 truncate">{file.name}</p>
+              <p className="text-xs text-stone-400">{(file.size / 1024).toFixed(0)} KB</p>
             </div>
             <button
               type="button"
               onClick={() => { setFile(null); setError(null) }}
-              className="text-cream/30 hover:text-cream/70 transition-colors"
+              className="text-stone-400 hover:text-stone-600 transition-colors"
               aria-label="Remove file"
             >
               <X className="w-4 h-4" />
@@ -83,18 +83,18 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
               "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer",
               isDragging
                 ? "border-gold/60 bg-gold/5"
-                : "border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5",
+                : "border-stone-300 bg-stone-50 hover:border-stone-400 hover:bg-stone-100",
             )}
           >
-            <Upload className={cn("w-7 h-7 transition-colors", isDragging ? "text-gold" : "text-cream/25")} />
+            <Upload className={cn("w-7 h-7 transition-colors", isDragging ? "text-gold" : "text-stone-400")} />
             <div>
-              <p className="text-sm font-medium text-cream/70">Tap to choose a file</p>
-              <p className="text-xs text-cream/30 mt-0.5">PDF, Word, or Excel · Max 10 MB</p>
+              <p className="text-sm font-medium text-stone-600">Tap to choose a file</p>
+              <p className="text-xs text-stone-400 mt-0.5">PDF, Word, or Excel · Max 10 MB</p>
             </div>
           </div>
         )}
 
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-rose-500">{error}</p>}
 
         <input
           ref={inputRef}

@@ -183,7 +183,7 @@ export function WineFinder() {
       {/* ------------------------------------------------------------------ */}
       {!hasResults && !isLoading && (
         <section className="flex-1 px-5 py-6 max-w-lg mx-auto w-full">
-          <div className="flex gap-1 p-1 bg-white/5 rounded-xl mb-5 border border-white/8">
+          <div className="flex gap-1 p-1 bg-black/5 rounded-xl mb-5 border border-stone-300">
             {(["url", "file"] as InputMode[]).map((m) => (
               <button
                 key={m}
@@ -192,7 +192,7 @@ export function WineFinder() {
                   "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all",
                   mode === m
                     ? "bg-wine-accent/80 text-white shadow-sm"
-                    : "text-cream/50 hover:text-cream/80",
+                    : "text-stone-400 hover:text-stone-600",
                 )}
               >
                 {m === "url"
@@ -233,13 +233,13 @@ export function WineFinder() {
 
           {/* Found count headline */}
           <div>
-            <h2 className="text-sm font-semibold text-cream">
+            <h2 className="text-sm font-semibold text-stone-800">
               Found {wines!.length} {wines!.length === 1 ? "wine" : "wines"} — here are your best pours
             </h2>
           </div>
 
           {/* Secondary filters */}
-          <div className="p-4 rounded-2xl border border-white/8 bg-white/4 backdrop-blur-sm">
+          <div className="p-4 rounded-2xl border border-stone-200 bg-white shadow-sm">
             <FilterBar
               filters={filters}
               onChange={setFilters}
@@ -250,14 +250,14 @@ export function WineFinder() {
 
           {/* Section A — Top 3 Hero Cards */}
           {topPicks.length === 0 ? (
-            <div className="text-center py-16 text-cream/25">
+            <div className="text-center py-16 text-stone-400">
               <DecanterMark className="w-10 h-10 mx-auto mb-4 opacity-30" />
               <p className="text-sm">No wines match those filters.</p>
               <p className="text-xs mt-1">Try adjusting your selection.</p>
             </div>
           ) : (
             <div>
-              <p className="text-[11px] text-cream/35 uppercase tracking-widest font-semibold mb-3">
+              <p className="text-[11px] text-stone-400 uppercase tracking-widest font-semibold mb-3">
                 Top picks
               </p>
               <TopPicksSection wines={topPicks} currency={currency} />
