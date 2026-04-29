@@ -289,8 +289,10 @@ async function extractXLSX(buf: Buffer): Promise<string> {
 // wine-related context (URL path, title attribute, anchor text).
 // Score 2 = wine-flagged, score 1 = generic.
 // ---------------------------------------------------------------------------
-const WINE_LINK_RE = /wein|wine|vino|karte|vinothek|offenwein|speisewein|vins|boisson|drinks?|beverage/i
-const SKIP_LINK_RE = /datenschutz|impressum|agb|cookie|gutschein|privacy|favicon|\.css|\.js/i
+const WINE_LINK_RE =
+  /wein|wine|vino|vins|vinothek|offenwein|weinkarte|cave\b|cantina|bodega|bebidas|bevande|drinks?|beverage|boisson|getränke/i
+const SKIP_LINK_RE =
+  /datenschutz|impressum|agb|gutschein|privacy|mentions.leg|cgv|cgu|confidential|termini|terminos|aviso.legal|terms|cookie|voucher|newsletter|subscribe|sitemap|favicon|about|contact|legal|\.css|\.js/i
 
 interface DiscoveredLink { url: string; score: number }
 
