@@ -5,6 +5,7 @@ import { Upload, FileText, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { validateFile, friendlyValidationError } from "@/lib/validators"
 import { cn } from "@/lib/utils"
+import { UI, UPLOAD, VALIDATION } from "@/lib/constants"
 
 const ACCEPT = ".pdf,.docx,.xlsx"
 const ACCEPT_MIME =
@@ -49,7 +50,7 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
     <form onSubmit={(e) => { e.preventDefault(); if (file) onSubmit(file) }} className="space-y-3">
       <div className="space-y-1.5">
         <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
-          Upload wine list
+          {UPLOAD.label}
         </span>
 
         {file ? (
@@ -63,7 +64,7 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
               type="button"
               onClick={() => { setFile(null); setError(null) }}
               className="text-stone-400 hover:text-stone-600 transition-colors"
-              aria-label="Remove file"
+              aria-label={VALIDATION.removeFile}
             >
               <X className="w-4 h-4" />
             </button>
@@ -72,7 +73,7 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
           <div
             role="button"
             tabIndex={0}
-            aria-label="Click to select file or drag and drop"
+            aria-label={VALIDATION.dropzoneLabel}
             onClick={() => inputRef.current?.click()}
             onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
@@ -88,8 +89,8 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
           >
             <Upload className={cn("w-7 h-7 transition-colors", isDragging ? "text-gold" : "text-stone-400")} />
             <div>
-              <p className="text-sm font-medium text-stone-600">Tap to choose a file</p>
-              <p className="text-xs text-stone-400 mt-0.5">PDF, Word, or Excel · Max 10 MB</p>
+              <p className="text-sm font-medium text-stone-600">{VALIDATION.tapToChoose}</p>
+              <p className="text-xs text-stone-400 mt-0.5">{VALIDATION.dropzoneHint}</p>
             </div>
           </div>
         )}
@@ -109,7 +110,7 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
 
       <Button type="submit" className="w-full" size="lg" disabled={disabled || !file}>
         <Search className="w-4 h-4" />
-        Find Best Pours
+        {UI.findBestPours}
       </Button>
     </form>
   )

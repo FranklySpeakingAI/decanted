@@ -1,3 +1,5 @@
+import { DEFAULT_CURRENCY, METRICS } from "@/lib/constants"
+
 export type WineType =
   | "Red"
   | "White"
@@ -77,13 +79,13 @@ export function scoreWine(wine: RawWine, index: number): ScoredWine {
 
   const sommelierNote =
     wine.sommelierNote ||
-    `${wine.region} at ${markupFactor.toFixed(1)}× — ${wine.criticScore} pts.`
+    `${wine.region} at ${markupFactor.toFixed(1)}× — ${wine.criticScore} ${METRICS.pts}.`
 
   return {
     ...wine,
     id: `wine-${index}`,
     type: wine.type ?? "Red",
-    currency: wine.currency ?? "CHF",
+    currency: wine.currency ?? DEFAULT_CURRENCY,
     markupFactor,
     totalValueScore,
     markupColor,

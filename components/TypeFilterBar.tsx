@@ -2,16 +2,9 @@
 
 import type { WineType } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
+import { FILTERS } from "@/lib/constants"
 
-export const TYPE_ORDER: WineType[] = [
-  "Champagne",
-  "White",
-  "Red",
-  "Rosé",
-  "Sparkling",
-  "Dessert",
-  "Non-Alcoholic",
-]
+export const TYPE_ORDER: WineType[] = FILTERS.wineTypes.slice(1) as WineType[]
 
 interface TypeFilterBarProps {
   availableTypes: WineType[]
@@ -25,7 +18,7 @@ export function TypeFilterBar({ availableTypes, selected, onChange }: TypeFilter
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
       <Pill active={selected === null} onClick={() => onChange(null)}>
-        All
+        {FILTERS.all}
       </Pill>
       {orderedTypes.map((type) => (
         <Pill

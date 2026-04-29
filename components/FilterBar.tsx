@@ -3,6 +3,7 @@
 import type { FoodPairing, WineRegion } from "@/lib/scoring"
 import { Button } from "@/components/ui/button"
 import { RangeSlider } from "@/components/ui/slider"
+import { FILTERS } from "@/lib/constants"
 
 // ---------------------------------------------------------------------------
 // Food pairing options (label, emoji, data value)
@@ -81,7 +82,7 @@ export function FilterBar({ filters, onChange, priceBounds, currency }: FilterBa
     <div className="space-y-4">
       {/* Food pairing */}
       <div>
-        <SectionLabel>Food pairing</SectionLabel>
+        <SectionLabel>{FILTERS.foodPairing}</SectionLabel>
         <div className="flex gap-1.5 flex-wrap">
           {FOOD_OPTIONS.map(({ label, emoji, value }) => (
             <Button
@@ -100,7 +101,7 @@ export function FilterBar({ filters, onChange, priceBounds, currency }: FilterBa
 
       {/* Region groups */}
       <div>
-        <SectionLabel>Region</SectionLabel>
+        <SectionLabel>{FILTERS.region}</SectionLabel>
         <div className="flex gap-1.5 flex-wrap">
           {REGION_LABELS.map((label) => (
             <Button
@@ -119,7 +120,7 @@ export function FilterBar({ filters, onChange, priceBounds, currency }: FilterBa
       {/* Price range */}
       {priceBounds && priceBounds[0] < priceBounds[1] && (
         <div>
-          <SectionLabel>Menu price range</SectionLabel>
+          <SectionLabel>{FILTERS.priceRange}</SectionLabel>
           <RangeSlider
             min={priceBounds[0]}
             max={priceBounds[1]}
