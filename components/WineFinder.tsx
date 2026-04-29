@@ -14,6 +14,7 @@ import { LoadingState } from "@/components/LoadingState"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { APP, UI, ERRORS, DEFAULT_CURRENCY } from "@/lib/constants"
 
 type InputMode = "url" | "file"
 
@@ -33,7 +34,7 @@ export function WineFinder() {
   const [isLoading, setIsLoading] = useState(false)
   const [loadingStartedAt, setLoadingStartedAt] = useState(0)
   const [wines, setWines] = useState<ScoredWine[] | null>(null)
-  const [currency, setCurrency] = useState("CHF")
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY)
   const [error, setError] = useState<string | null>(null)
 
   // Primary type filter
@@ -102,12 +103,12 @@ export function WineFinder() {
       const result = await processWineList(fd)
       if (result.success && result.wines) {
         setWines(result.wines)
-        setCurrency(result.currency ?? "CHF")
+        setCurrency(result.currency ?? DEFAULT_CURRENCY)
       } else {
-        setError(result.error ?? "Something went wrong. Please try again.")
+        setError(result.error ?? ERRORS.generic)
       }
     } catch {
-      setError("Something went wrong. Please try again.")
+      setError(ERRORS.generic)
     } finally {
       setIsLoading(false)
     }
@@ -150,17 +151,17 @@ export function WineFinder() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-cream tracking-tight leading-none">
-              Decanted
+              {APP.name}
             </h1>
             <p className="text-[11px] text-cream/40 leading-none mt-0.5">
-              Find the best value pours at your table
+              {APP.tagline}
             </p>
           </div>
           {hasResults && (
             <div className="ml-auto">
               <Button variant="ghost" size="sm" onClick={handleReset}>
                 <RotateCcw className="w-3.5 h-3.5" />
-                New search
+                {UI.newSearch}
               </Button>
             </div>
           )}
@@ -198,7 +199,7 @@ export function WineFinder() {
                 {m === "url"
                   ? <Link2 className="w-3.5 h-3.5" />
                   : <FileUp className="w-3.5 h-3.5" />}
-                {m === "url" ? "Scan URL" : "Upload File"}
+                {m === "url" ? UI.scanUrl : UI.uploadFile}
               </button>
             ))}
           </div>
@@ -234,7 +235,7 @@ export function WineFinder() {
           {/* Found count headline */}
           <div>
             <h2 className="text-sm font-semibold text-stone-800">
-              Found {wines!.length} {wines!.length === 1 ? "wine" : "wines"} — here are your best pours
+              {UI.foundWines(wines!.length)}
             </h2>
           </div>
 
@@ -252,13 +253,13 @@ export function WineFinder() {
           {topPicks.length === 0 ? (
             <div className="text-center py-16 text-stone-400">
               <DecanterMark className="w-10 h-10 mx-auto mb-4 opacity-30" />
-              <p className="text-sm">No wines match those filters.</p>
-              <p className="text-xs mt-1">Try adjusting your selection.</p>
+              <p className="text-sm">{UI.noWinesMatch}</p>
+              <p className="text-xs mt-1">{UI.adjustFilters}</p>
             </div>
           ) : (
             <div>
               <p className="text-[11px] text-stone-400 uppercase tracking-widest font-semibold mb-3">
-                Top picks
+                {UI.topPicks}
               </p>
               <TopPicksSection wines={topPicks} currency={currency} />
             </div>

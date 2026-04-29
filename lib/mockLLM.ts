@@ -1,4 +1,5 @@
 import type { RawWine, WineRegion, FoodPairing, WineType } from "./scoring"
+import { ERRORS, DEFAULT_CURRENCY } from "@/lib/constants"
 
 // ---------------------------------------------------------------------------
 // Canonical region taxonomy
@@ -72,70 +73,70 @@ const MOCK_WINES: RawWine[] = [
   {
     name: "Château Léoville-Barton", producer: "Anthony Barton",
     vintage: 2016, type: "Red", region: "Bordeaux",
-    restaurantPrice: 195, marketPrice: 80, criticScore: 96, currency: "CHF",
+    restaurantPrice: 195, marketPrice: 80, criticScore: 96, currency: DEFAULT_CURRENCY,
     foodPairings: ["Red Meat", "Vegetarian"],
     sommelierNote: "Saint-Julien at 2.4× — 96-point vintage, textbook markup.",
   },
   {
     name: "Sassicaia", producer: "Tenuta San Guido",
     vintage: 2020, type: "Red", region: "Tuscany",
-    restaurantPrice: 175, marketPrice: 92, criticScore: 97, currency: "CHF",
+    restaurantPrice: 175, marketPrice: 92, criticScore: 97, currency: DEFAULT_CURRENCY,
     foodPairings: ["Red Meat", "White Meat"],
     sommelierNote: "Bolgheri benchmark at 1.9× — close to retail, supreme value.",
   },
   {
     name: "Domaine Leflaive Puligny-Montrachet 1er Cru", producer: "Domaine Leflaive",
     vintage: 2021, type: "White", region: "Burgundy",
-    restaurantPrice: 290, marketPrice: 115, criticScore: 95, currency: "CHF",
+    restaurantPrice: 290, marketPrice: 115, criticScore: 95, currency: DEFAULT_CURRENCY,
     foodPairings: ["Fish", "White Meat", "Vegetarian"],
     sommelierNote: "White Burgundy at 2.5× — ideal markup, stunning with fish.",
   },
   {
     name: "Opus One", producer: "Opus One Winery",
     vintage: 2019, type: "Red", region: "Napa Valley",
-    restaurantPrice: 495, marketPrice: 195, criticScore: 97, currency: "CHF",
+    restaurantPrice: 495, marketPrice: 195, criticScore: 97, currency: DEFAULT_CURRENCY,
     foodPairings: ["Red Meat", "White Meat"],
     sommelierNote: "Napa icon at 2.5× — show-stopping for a special occasion.",
   },
   {
     name: "Flowers Pinot Noir Camp Meeting Ridge", producer: "Flowers Winery",
     vintage: 2021, type: "Red", region: "Sonoma",
-    restaurantPrice: 98, marketPrice: 48, criticScore: 93, currency: "CHF",
+    restaurantPrice: 98, marketPrice: 48, criticScore: 93, currency: DEFAULT_CURRENCY,
     foodPairings: ["White Meat", "Fish", "Vegetarian"],
     sommelierNote: "Sonoma Pinot at 2.0× — versatile, great with lighter dishes.",
   },
   {
     name: "Gaja Barbaresco", producer: "Angelo Gaja",
     vintage: 2018, type: "Red", region: "Piedmont",
-    restaurantPrice: 380, marketPrice: 125, criticScore: 96, currency: "CHF",
+    restaurantPrice: 380, marketPrice: 125, criticScore: 96, currency: DEFAULT_CURRENCY,
     foodPairings: ["Red Meat", "Game"],
     sommelierNote: "Piedmont royalty at 3.0× — earthy, tannic, built for game.",
   },
   {
     name: "Château Margaux", producer: "Château Margaux",
     vintage: 2017, type: "Red", region: "Bordeaux",
-    restaurantPrice: 895, marketPrice: 210, criticScore: 98, currency: "CHF",
+    restaurantPrice: 895, marketPrice: 210, criticScore: 98, currency: DEFAULT_CURRENCY,
     foodPairings: ["Red Meat"],
     sommelierNote: "First-growth at 4.3× — steep, but 98 points speaks for itself.",
   },
   {
     name: "Gevrey-Chambertin Vieilles Vignes", producer: "Rossignol-Trapet",
     vintage: 2020, type: "Red", region: "Burgundy",
-    restaurantPrice: 118, marketPrice: 55, criticScore: 91, currency: "CHF",
+    restaurantPrice: 118, marketPrice: 55, criticScore: 91, currency: DEFAULT_CURRENCY,
     foodPairings: ["Game", "Red Meat"],
     sommelierNote: "Old-vine Gevrey at 2.1× — earthy depth perfect for game.",
   },
   {
     name: "Weingut Keller Riesling Spätlese", producer: "Weingut Keller",
     vintage: 2022, type: "White", region: "Germany",
-    restaurantPrice: 84, marketPrice: 40, criticScore: 94, currency: "CHF",
+    restaurantPrice: 84, marketPrice: 40, criticScore: 94, currency: DEFAULT_CURRENCY,
     foodPairings: ["Fish", "Vegetarian", "White Meat"],
     sommelierNote: "Rheinhessen Riesling at 2.1× — 94pts, phenomenal fish wine.",
   },
   {
     name: "Château Pichon Baron", producer: "Château Pichon Baron",
     vintage: 2015, type: "Red", region: "Bordeaux",
-    restaurantPrice: 235, marketPrice: 90, criticScore: 98, currency: "CHF",
+    restaurantPrice: 235, marketPrice: 90, criticScore: 98, currency: DEFAULT_CURRENCY,
     foodPairings: ["Red Meat"],
     sommelierNote: "Pauillac second-growth, 98pts, 2.6× — serious Cabernet value.",
   },
@@ -214,8 +215,8 @@ For each wine, add these fields and keep all existing ones:
 - pairings: any from ["Red Meat","White Meat","Game","Fish","Vegetarian"]
 - sommelierNote: ≤20 words on value and food fit
 
-Detect currency from context (CHF for Swiss, EUR for European).
-Return ONLY: {"currency":"CHF","wines":[...complete enriched array...]}
+Detect currency from context (${DEFAULT_CURRENCY} for Swiss, EUR for European).
+Return ONLY: {"currency":"${DEFAULT_CURRENCY}","wines":[...complete enriched array...]}
 No prose, no markdown.
 
 WINE_REGIONS taxonomy:
@@ -249,7 +250,7 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
     const wineLines = extractWineLines(truncated)
     console.log(`[LLM] Layer 1: ${truncated.length} chars → ${wineLines.length} candidate lines`)
     if (wineLines.length === 0) {
-      throw new Error("No wine lines detected. Please check that the document contains a wine list.")
+      throw new Error(ERRORS.noWineLines)
     }
     inputForExtraction = wineLines.join("\n")
   }
@@ -260,12 +261,12 @@ export async function getLLMResponse(input: LLMInput): Promise<RawWine[]> {
   console.log(`[LLM] Layer 2A (${provider}): ${extracted.length} wines parsed`)
 
   if (extracted.length === 0) {
-    throw new Error("Could not parse any wines from the document. Please try a different file.")
+    throw new Error(ERRORS.parseFailure)
   }
 
   // Layer 2B: smart model — enrich with market data, scores, pairings
   let rawWines: RawWine[]
-  let detectedCurrency = "CHF"
+  let detectedCurrency = DEFAULT_CURRENCY
   try {
     const enriched = await callEnrichmentModel(extracted, openaiKey, anthropicKey)
     detectedCurrency = enriched.currency
@@ -434,7 +435,7 @@ function parseEnrichmentResponse(text: string): LLMResponse {
   const jsonSlice = objEnd !== -1 ? text.slice(objStart, objEnd + 1) : text.slice(objStart)
   const parsed = JSON.parse(jsonSlice)
   if (!Array.isArray(parsed?.wines)) throw new Error("Unexpected enrichment response shape")
-  const currency = String(parsed.currency ?? "CHF")
+  const currency = String(parsed.currency ?? DEFAULT_CURRENCY)
   return { currency, wines: parsed.wines.map((w: Record<string, unknown>) => mapEnrichedWine(w, currency)) }
 }
 

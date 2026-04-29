@@ -4,6 +4,7 @@ import { headers } from "next/headers"
 import { validateFile, friendlyValidationError } from "@/lib/validators"
 import { getLLMResponse } from "@/lib/mockLLM"
 import { scoreAndRankWines, type ProcessResult } from "@/lib/scoring"
+import { ERRORS, DEFAULT_CURRENCY, WINE_LIST_KEYWORDS } from "@/lib/constants"
 
 // ---------------------------------------------------------------------------
 // Per-process rate limiter (10 req / IP / hour).
@@ -41,19 +42,16 @@ export async function processWineList(formData: FormData): Promise<ProcessResult
   try {
     const h = await headers()
     if (isRateLimited(getClientIP(h))) {
-      return {
-        success: false,
-        error: "You've reached the limit of 10 searches per hour. Please try again later.",
-      }
+      return { success: false, error: ERRORS.rateLimit }
     }
 
     const mode = formData.get("mode") as string | null
     if (mode === "url") return processURL(formData)
     if (mode === "file") return processFile(formData)
-    return { success: false, error: "Invalid request." }
+    return { success: false, error: ERRORS.invalidRequest }
   } catch (err) {
     console.error("[processWineList]", err instanceof Error ? err.message : err)
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: ERRORS.generic }
   }
 }
 
@@ -62,14 +60,14 @@ export async function processWineList(formData: FormData): Promise<ProcessResult
 // ---------------------------------------------------------------------------
 async function processURL(formData: FormData): Promise<ProcessResult> {
   const raw = (formData.get("url") as string | null) ?? ""
-  if (!raw || raw.length > 2048) return { success: false, error: "Please provide a valid URL." }
+  if (!raw || raw.length > 2048) return { success: false, error: ERRORS.urlRequired }
 
   let parsed: URL
   try { parsed = new URL(raw) } catch {
-    return { success: false, error: "Please provide a valid URL." }
+    return { success: false, error: ERRORS.urlRequired }
   }
   if (!["http:", "https:"].includes(parsed.protocol)) {
-    return { success: false, error: "Only http and https URLs are supported." }
+    return { success: false, error: ERRORS.urlProtocol }
   }
 
   let content = ""
@@ -79,7 +77,7 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
       headers: { "User-Agent": "DecantedBot/1.0 (+https://decanted.vercel.app)" },
       signal: AbortSignal.timeout(15_000),
     })
-    if (!res.ok) return { success: false, error: "Could not access that URL. Please check the address and try again." }
+    if (!res.ok) return { success: false, error: ERRORS.urlUnreachable }
 
     const contentType = res.headers.get("content-type") ?? ""
     const isPDF = contentType.includes("application/pdf") ||
@@ -147,21 +145,18 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
       }
     }
   } catch {
-    return { success: false, error: "Could not access that URL. Please check the address and try again." }
+    return { success: false, error: ERRORS.urlUnreachable }
   }
 
   try {
     const rawWines = await getLLMResponse({ mode: "url", content })
     const wines = scoreAndRankWines(rawWines)
-    return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }
+    return { success: true, wines, currency: wines[0]?.currency ?? DEFAULT_CURRENCY }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "LLM call failed"
     console.error("[processURL] LLM error:", msg)
     if (isHTML && msg.includes("Could not parse any wines")) {
-      return {
-        success: false,
-        error: "No wine list found on that page. Try pasting the direct link to their wine list or PDF.",
-      }
+      return { success: false, error: ERRORS.noWineListFound }
     }
     return { success: false, error: msg }
   }
@@ -172,7 +167,7 @@ async function processURL(formData: FormData): Promise<ProcessResult> {
 // ---------------------------------------------------------------------------
 async function processFile(formData: FormData): Promise<ProcessResult> {
   const file = formData.get("file") as File | null
-  if (!file) return { success: false, error: "No file provided." }
+  if (!file) return { success: false, error: ERRORS.noFile }
 
   const validation = await validateFile(file)
   if (!validation.valid) {
@@ -190,24 +185,18 @@ async function processFile(formData: FormData): Promise<ProcessResult> {
     content = await extractTextContent(file.type, buffer)
   } catch (err) {
     console.error("[extractTextContent]", err instanceof Error ? err.message : err)
-    return {
-      success: false,
-      error: "We couldn't read that file. Please try a different PDF, Word, or Excel file.",
-    }
+    return { success: false, error: ERRORS.fileUnreadable }
   }
 
   if (!content.trim()) {
-    return {
-      success: false,
-      error: "The file appears to be empty or contains only images. Please try a text-based PDF.",
-    }
+    return { success: false, error: ERRORS.fileEmpty }
   }
 
   console.log(`[extractTextContent] Extracted ${content.length} characters from file`)
   try {
     const rawWines = await getLLMResponse({ mode: "file", content })
     const wines = scoreAndRankWines(rawWines)
-    return { success: true, wines, currency: wines[0]?.currency ?? "CHF" }
+    return { success: true, wines, currency: wines[0]?.currency ?? DEFAULT_CURRENCY }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "LLM call failed"
     console.error("[processFile] LLM error:", msg)
@@ -257,13 +246,11 @@ async function extractPDF(buf: Buffer): Promise<string> {
   const data = await pdfParse(buf)
 
   if (data.numpages > 100) {
-    throw new Error(
-      `This PDF is too large (${data.numpages} pages). We can scan up to 100 pages — please upload just the wine list section.`,
-    )
+    throw new Error(ERRORS.pdfTooLarge(data.numpages))
   }
 
   if (data.text.trim().length < 50) {
-    throw new Error("PDF appears to contain only images — no extractable text found.")
+    throw new Error(ERRORS.pdfImagesOnly)
   }
 
   return data.text
@@ -289,8 +276,7 @@ async function extractXLSX(buf: Buffer): Promise<string> {
 // wine-related context (URL path, title attribute, anchor text).
 // Score 2 = wine-flagged, score 1 = generic.
 // ---------------------------------------------------------------------------
-const WINE_LINK_RE =
-  /wein|wine|vino|vins|vinothek|offenwein|weinkarte|cave\b|cantina|bodega|bebidas|bevande|drinks?|beverage|boisson|getränke/i
+const WINE_LINK_RE = new RegExp(WINE_LIST_KEYWORDS.join("|"), "i")
 const SKIP_LINK_RE =
   /datenschutz|impressum|agb|gutschein|privacy|mentions.leg|cgv|cgu|confidential|termini|terminos|aviso.legal|terms|cookie|voucher|newsletter|subscribe|sitemap|favicon|about|contact|legal|\.css|\.js/i
 

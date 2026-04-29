@@ -2,6 +2,7 @@
 
 import type { ScoredWine } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
+import { METRICS, UI } from "@/lib/constants"
 
 const MARKUP_DOT: Record<string, string> = {
   green: "bg-emerald-500",
@@ -67,7 +68,7 @@ function HeroCard({
             : "bg-stone-100 text-stone-500",
         )}
       >
-        {rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"}
+        {rank === 1 ? UI.rankLabels[0] : rank === 2 ? UI.rankLabels[1] : UI.rankLabels[2]}
       </div>
 
       {/* Identity */}
@@ -89,13 +90,13 @@ function HeroCard({
 
       {/* Metrics row */}
       <div className="grid grid-cols-2 gap-1.5">
-        <MetricCell label="Menu price" value={`${currency} ${wine.restaurantPrice}`} />
-        <MetricCell label="Est. market" value={`~${currency} ${wine.marketPrice}`} />
+        <MetricCell label={METRICS.menuPrice} value={`${currency} ${wine.restaurantPrice}`} />
+        <MetricCell label={METRICS.estMarket} value={`~${currency} ${wine.marketPrice}`} />
 
         {/* Markup */}
         <div className="flex flex-col gap-0.5 p-2.5 rounded-xl border border-stone-100 bg-stone-50">
           <span className="text-[9px] uppercase tracking-widest text-stone-400 font-semibold">
-            Markup
+            {METRICS.markup}
           </span>
           <div className="flex items-center gap-1.5">
             <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", MARKUP_DOT[wine.markupColor])} />
@@ -107,8 +108,8 @@ function HeroCard({
 
         {/* Critic score */}
         <MetricCell
-          label="Critic score"
-          value={wine.criticScore ? `${wine.criticScore} pts` : "—"}
+          label={METRICS.criticScore}
+          value={wine.criticScore ? `${wine.criticScore} ${METRICS.pts}` : "—"}
         />
       </div>
 

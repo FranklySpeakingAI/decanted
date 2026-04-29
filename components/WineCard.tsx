@@ -1,10 +1,11 @@
 import type { ScoredWine } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
+import { METRICS, DEFAULT_CURRENCY, UI } from "@/lib/constants"
 
 const RANK = {
-  1: { label: "1st", ring: "ring-2 ring-amber-400/50", rankCls: "bg-amber-400 text-black" },
-  2: { label: "2nd", ring: "ring-1 ring-white/15",      rankCls: "bg-white/20 text-cream" },
-  3: { label: "3rd", ring: "ring-1 ring-white/10",      rankCls: "bg-white/12 text-cream/70" },
+  1: { label: UI.rankLabels[0], ring: "ring-2 ring-amber-400/50", rankCls: "bg-amber-400 text-black" },
+  2: { label: UI.rankLabels[1], ring: "ring-1 ring-white/15",      rankCls: "bg-white/20 text-cream" },
+  3: { label: UI.rankLabels[2], ring: "ring-1 ring-white/10",      rankCls: "bg-white/12 text-cream/70" },
 } as const
 
 const MARKUP_DOT: Record<string, string> = {
@@ -63,7 +64,7 @@ function MetricCell({ label, value, sub, highlight, className }: MetricCellProps
 
 export function WineCard({ wine, rank }: WineCardProps) {
   const cfg = RANK[rank]
-  const cur = wine.currency ?? "CHF"
+  const cur = wine.currency ?? DEFAULT_CURRENCY
 
   return (
     <div
@@ -97,11 +98,11 @@ export function WineCard({ wine, rank }: WineCardProps) {
       {/* Metric grid — 3 columns row 1, 2 columns row 2 */}
       <div className="grid grid-cols-3 gap-1.5 mb-1.5">
         <MetricCell
-          label="Menu"
+          label={METRICS.menuPrice}
           value={`${cur} ${wine.restaurantPrice}`}
         />
         <MetricCell
-          label="Market est."
+          label={METRICS.estMarket}
           value={`~${cur} ${wine.marketPrice}`}
         />
         {/* Markup cell with colour indicator */}
@@ -111,7 +112,7 @@ export function WineCard({ wine, rank }: WineCardProps) {
           )}
         >
           <span className="text-[9px] uppercase tracking-widest text-cream/40 font-semibold">
-            Markup
+            {METRICS.markup}
           </span>
           <div className="flex items-center gap-1.5">
             <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", MARKUP_DOT[wine.markupColor])} />
@@ -124,11 +125,11 @@ export function WineCard({ wine, rank }: WineCardProps) {
 
       <div className="grid grid-cols-2 gap-1.5 mb-4">
         <MetricCell
-          label="Critic score"
-          value={`${wine.criticScore} pts`}
+          label={METRICS.criticScore}
+          value={`${wine.criticScore} ${METRICS.pts}`}
         />
         <MetricCell
-          label="Value score"
+          label={METRICS.valueScore}
           value={`${wine.totalValueScore}/100`}
           highlight
         />

@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from "lucide-react"
 import type { ScoredWine, WineType } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 import { TYPE_ORDER } from "@/components/TypeFilterBar"
+import { UI, METRICS } from "@/lib/constants"
 
 const MARKUP_DOT: Record<string, string> = {
   green: "bg-emerald-500",
@@ -39,7 +40,7 @@ export function FullWineList({ wines, currency, selectedType }: FullWineListProp
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-px bg-stone-200" />
         <span className="text-[11px] text-stone-400 uppercase tracking-widest font-semibold whitespace-nowrap">
-          All {wines.length} wines found
+          {UI.allWinesFound(wines.length)}
         </span>
         <div className="flex-1 h-px bg-stone-200" />
       </div>
@@ -84,9 +85,9 @@ function WineTypeGroup({
             ? <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
             : <ChevronRight className="w-3.5 h-3.5 text-stone-400" />}
           <span className="text-sm font-semibold text-stone-700">{type}</span>
-          <span className="text-xs text-stone-400">— {wines.length} {wines.length === 1 ? "wine" : "wines"}</span>
+          <span className="text-xs text-stone-400">— {UI.allWinesFound(wines.length)}</span>
         </div>
-        <span className="text-[10px] text-stone-400">sorted by value</span>
+        <span className="text-[10px] text-stone-400">{UI.sortedByValue}</span>
       </button>
 
       {/* Wine rows */}
@@ -127,7 +128,7 @@ function WineRow({ wine, currency }: { wine: ScoredWine; currency: string }) {
 
       {/* Critic score */}
       <span className="text-xs text-stone-400 shrink-0 w-12 text-right">
-        {wine.criticScore ? `${wine.criticScore}pts` : "—"}
+        {wine.criticScore ? `${wine.criticScore}${METRICS.pts}` : "—"}
       </span>
     </div>
   )
