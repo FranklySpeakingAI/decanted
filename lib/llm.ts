@@ -124,7 +124,7 @@ const REGION_TAXONOMY = Object.entries(WINE_REGIONS)
 export const LIMITS = {
   maxExtractedChars: 40_000,
   maxWineLines: 300,
-  maxWinesForRanking: 150,
+  maxWinesForRanking: 300, // a full restaurant list can run 250+ entries incl. formats
   enrichBatchSize: 20,
   extractChunkLines: 35, // smaller chunks → faster parallel calls, no output truncation
 } as const
@@ -242,7 +242,7 @@ export async function runExtraction(
 
   const usage: Usage = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
   const all: ExtractedWine[] = []
-  await mapLimit(chunks, 10, async (chunk) => {
+  await mapLimit(chunks, 6, async (chunk) => {
     const { text: out, usage: u } = await callAnthropic(key, {
       system: EXTRACTION_PROMPT,
       user: chunk,

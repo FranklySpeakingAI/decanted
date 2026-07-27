@@ -80,8 +80,12 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     )
   }
 
-  // 2. Extraction (Haiku).
-  const ex = await runExtraction(key, normalized)
+  // 2. Extraction (Haiku). Pass the RAW content — newlines and original case
+  //    intact. `normalized` collapses every \n to a space, which flattens the
+  //    whole list into a single "line": extractWineLines then can't split it,
+  //    so line-based chunking degrades to one giant truncated call (measured:
+  //    122 wines vs 265 with newlines preserved). normalized is for hashing only.
+  const ex = await runExtraction(key, input.content)
   await recordUsage({ model: ANTHROPIC_MODEL, step: "extraction", usage: ex.usage, clientIp: input.clientIp })
   const extracted = ex.wines
   if (!extracted.length) {
