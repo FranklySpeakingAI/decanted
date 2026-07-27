@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 type InputMode = "url" | "file"
+type Theme = "white-wine" | "red-wine"
 
 function DecanterMark({ className }: { className?: string }) {
   return (
@@ -28,13 +29,44 @@ function DecanterMark({ className }: { className?: string }) {
   )
 }
 
+function ThemeToggle({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
+      style={{
+        background: "var(--bg-glass)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        border: "1px solid var(--accent-border)",
+        color: "var(--text-primary)",
+      }}
+      aria-label="Toggle wine theme"
+    >
+      {theme === "white-wine" ? (
+        <>
+          <span aria-hidden="true">🥂</span>
+          <span className="hidden sm:inline">White Wine</span>
+        </>
+      ) : (
+        <>
+          <span aria-hidden="true">🍷</span>
+          <span className="hidden sm:inline">Red Wine</span>
+        </>
+      )}
+    </button>
+  )
+}
+
 export function WineFinder() {
   const [mode, setMode] = useState<InputMode>("url")
   const [isLoading, setIsLoading] = useState(false)
   const [loadingStartedAt, setLoadingStartedAt] = useState(0)
   const [wines, setWines] = useState<ScoredWine[] | null>(null)
   const [currency, setCurrency] = useState("CHF")
+  const [meta, setMeta] = useState<import("@/lib/scoring").ProcessResult["meta"] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [theme, setTheme] = useState<Theme>("white-wine")
 
   // Primary type filter
   const [selectedType, setSelectedType] = useState<WineType | null>(null)
@@ -48,15 +80,37 @@ export function WineFinder() {
   })
   const [priceBounds, setPriceBounds] = useState<[number, number] | null>(null)
 
-  // Auto-initialize price slider bounds when wines load
+  // Init theme from localStorage (after flash-prevention script in layout).
+  // Syncing React state from an external store (localStorage) on mount is a
+  // legitimate effect; the lint rule's cascade warning doesn't apply here.
+  useEffect(() => {
+    const saved = localStorage.getItem("decanted-theme") as Theme | null
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved === "red-wine") setTheme("red-wine")
+  }, [])
+
+  // Derive price-slider bounds from the freshly loaded wines.
   useEffect(() => {
     if (!wines || wines.length === 0) return
     const prices = wines.map((w) => w.restaurantPrice)
     const minP = Math.min(...prices)
     const maxP = Math.max(...prices)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPriceBounds([minP, maxP])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilters((f) => ({ ...f, priceMin: minP, priceMax: maxP }))
   }, [wines])
+
+  function toggleTheme() {
+    const next: Theme = theme === "white-wine" ? "red-wine" : "white-wine"
+    setTheme(next)
+    if (next === "red-wine") {
+      document.documentElement.setAttribute("data-theme", "red-wine")
+    } else {
+      document.documentElement.removeAttribute("data-theme")
+    }
+    try { localStorage.setItem("decanted-theme", next) } catch { /* noop */ }
+  }
 
   // Types actually present in the result set
   const availableTypes = useMemo((): WineType[] => {
@@ -103,6 +157,7 @@ export function WineFinder() {
       if (result.success && result.wines) {
         setWines(result.wines)
         setCurrency(result.currency ?? "CHF")
+        setMeta(result.meta ?? null)
       } else {
         setError(result.error ?? "Something went wrong. Please try again.")
       }
@@ -136,13 +191,218 @@ export function WineFinder() {
   }
 
   const hasResults = wines !== null && !isLoading
+  const isLanding = !hasResults && !isLoading
 
+  // -------------------------------------------------------------------------
+  // Landing page — 3-zone layout
+  // -------------------------------------------------------------------------
+  if (isLanding) {
+    return (
+      <div className="hero-animated-bg noise-overlay min-h-dvh" style={{ color: "var(--text-primary)" }}>
+
+        {/* Fixed theme toggle — always top-right */}
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Zone 1 — Full-viewport hero                                      */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="relative min-h-dvh flex flex-col">
+
+          {/* Wordmark */}
+          <div className="safe-top px-6 pb-4 flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+              style={{
+                background: "rgba(200,168,75,0.15)",
+                boxShadow: "0 0 0 1px rgba(200,168,75,0.25)",
+                color: "var(--accent-primary)",
+              }}
+            >
+              <DecanterMark className="w-[18px] h-[18px]" />
+            </div>
+            <span className="wordmark text-xl" style={{ color: "var(--text-primary)" }}>
+              Decanted
+            </span>
+          </div>
+
+          {/* Hero centre content */}
+          <div className="flex-1 flex items-center justify-center px-5 py-10">
+            <div className="w-full max-w-lg mx-auto flex flex-col items-center text-center">
+
+              {/* Eyebrow label */}
+              <p
+                className="text-xs font-semibold tracking-[0.2em] uppercase mb-4"
+                style={{ color: "var(--accent-primary)" }}
+              >
+                ✦ AI-POWERED WINE SCANNER
+              </p>
+
+              {/* Headline */}
+              <h1
+                className="text-[40px] md:text-[64px] font-semibold leading-tight mb-4"
+                style={{ fontFamily: "var(--font-cormorant), Georgia, serif", color: "var(--text-primary)" }}
+              >
+                Stop overpaying<br />for wine.
+              </h1>
+
+              {/* Subheadline */}
+              <p
+                className="text-lg leading-relaxed mb-7 max-w-sm"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Upload your restaurant&#39;s wine list. Decanted finds the best value bottles — ranked by markup, critic score, and what you&#39;re eating.
+              </p>
+
+              {/* Benefit pills */}
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
+                {["📄 PDF or URL", "🍷 100+ wines analysed", "⚡ Results in seconds"].map((pill) => (
+                  <span
+                    key={pill}
+                    className="px-3.5 py-1.5 rounded-full text-sm"
+                    style={{
+                      background: "var(--bg-glass)",
+                      backdropFilter: "blur(8px)",
+                      WebkitBackdropFilter: "blur(8px)",
+                      border: "1px solid var(--accent-border)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {pill}
+                  </span>
+                ))}
+              </div>
+
+              {/* Glassmorphism scan card */}
+              <div className="glass-card w-full text-left">
+
+                {/* Mode pill toggle */}
+                <div
+                  className="flex gap-1 p-1 rounded-xl mb-5"
+                  style={{ background: "rgba(0,0,0,0.06)" }}
+                >
+                  {(["url", "file"] as InputMode[]).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => { setMode(m); setError(null) }}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
+                      style={
+                        mode === m
+                          ? { background: "var(--pill-active-bg)", color: "var(--pill-active-text)" }
+                          : { color: "var(--text-muted)" }
+                      }
+                    >
+                      {m === "url" ? <Link2 className="w-3.5 h-3.5" /> : <FileUp className="w-3.5 h-3.5" />}
+                      {m === "url" ? "Scan URL" : "Upload File"}
+                    </button>
+                  ))}
+                </div>
+
+                {mode === "url"
+                  ? <URLInput onSubmit={handleURLSubmit} disabled={isLoading} />
+                  : <FileUpload onSubmit={handleFileSubmit} disabled={isLoading} />}
+
+                {error && (
+                  <Alert variant="destructive" className="mt-4">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              {/* Trust line */}
+              <p className="mt-4 text-xs" style={{ color: "var(--text-muted)" }}>
+                No data stored. No account needed. Scans deleted instantly.
+              </p>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Zone 2 — How It Works                                            */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="px-5 py-20 max-w-5xl mx-auto w-full">
+          <h2
+            className="text-4xl md:text-5xl font-semibold text-center mb-12"
+            style={{ fontFamily: "var(--font-cormorant), Georgia, serif", color: "var(--text-primary)" }}
+          >
+            Three steps to your perfect bottle
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              {
+                num: "01",
+                title: "Upload your list",
+                body: "Drop a PDF or paste the restaurant URL. We do the rest.",
+              },
+              {
+                num: "02",
+                title: "We analyse every wine",
+                body: "Our AI checks markup, critic scores, and market value across the full list.",
+              },
+              {
+                num: "03",
+                title: "Get your top picks",
+                body: "See the best value bottles ranked for your food, your budget, your taste.",
+              },
+            ].map(({ num, title, body }) => (
+              <div key={num} className="how-card">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold mb-4"
+                  style={{ background: "var(--accent-primary)", color: "var(--pill-active-text)" }}
+                >
+                  {num}
+                </div>
+                <h3
+                  className="text-xl font-semibold mb-2"
+                  style={{ fontFamily: "var(--font-cormorant), Georgia, serif", color: "var(--text-primary)" }}
+                >
+                  {title}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                  {body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Zone 3 — Sticky mobile CTA                                       */}
+        {/* ---------------------------------------------------------------- */}
+        <div
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-4"
+          style={{
+            background: "var(--bg-surface)",
+            borderTop: "1px solid var(--accent-border)",
+          }}
+        >
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all"
+            style={{
+              background: "var(--accent-primary)",
+              color: "var(--pill-active-text)",
+            }}
+          >
+            Scan Wine List →
+          </button>
+        </div>
+
+      </div>
+    )
+  }
+
+  // -------------------------------------------------------------------------
+  // Loading / Results — existing layout, theme toggle added to header
+  // -------------------------------------------------------------------------
   return (
     <div className="flex flex-col min-h-dvh bg-sweep">
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Header                                                               */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Header */}
       <header className="safe-top px-5 pb-4 bg-[#160b0f] border-b border-white/5">
         <div className="max-w-5xl mx-auto flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center ring-1 ring-gold/20 shrink-0">
@@ -156,14 +416,15 @@ export function WineFinder() {
               Find the best value pours at your table
             </p>
           </div>
-          {hasResults && (
-            <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            {hasResults && (
               <Button variant="ghost" size="sm" onClick={handleReset}>
                 <RotateCcw className="w-3.5 h-3.5" />
                 New search
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Type filter pill bar — pinned below header when results are showing */}
@@ -178,56 +439,14 @@ export function WineFinder() {
         )}
       </header>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Input panel                                                           */}
-      {/* ------------------------------------------------------------------ */}
-      {!hasResults && !isLoading && (
-        <section className="flex-1 px-5 py-6 max-w-lg mx-auto w-full">
-          <div className="flex gap-1 p-1 bg-black/5 rounded-xl mb-5 border border-stone-300">
-            {(["url", "file"] as InputMode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(null) }}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all",
-                  mode === m
-                    ? "bg-wine-accent/80 text-white shadow-sm"
-                    : "text-stone-400 hover:text-stone-600",
-                )}
-              >
-                {m === "url"
-                  ? <Link2 className="w-3.5 h-3.5" />
-                  : <FileUp className="w-3.5 h-3.5" />}
-                {m === "url" ? "Scan URL" : "Upload File"}
-              </button>
-            ))}
-          </div>
-
-          {mode === "url"
-            ? <URLInput onSubmit={handleURLSubmit} disabled={isLoading} />
-            : <FileUpload onSubmit={handleFileSubmit} disabled={isLoading} />}
-
-          {error && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </section>
-      )}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Loading                                                               */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Loading */}
       {isLoading && (
         <div className="flex-1 flex items-center justify-center">
           <LoadingState startedAt={loadingStartedAt} />
         </div>
       )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Results                                                              */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Results */}
       {hasResults && (
         <section className="flex-1 px-5 pb-12 pt-6 max-w-5xl mx-auto w-full space-y-8">
 
@@ -236,6 +455,13 @@ export function WineFinder() {
             <h2 className="text-sm font-semibold text-stone-800">
               Found {wines!.length} {wines!.length === 1 ? "wine" : "wines"} — here are your best pours
             </h2>
+            {meta && (
+              <p className="mt-1 text-[11px] text-stone-400">
+                {meta.fromCache
+                  ? "Served from cache — no new analysis needed"
+                  : `${meta.dbHits}/${meta.total} matched from the catalogue · ${meta.enriched} newly analysed`}
+              </p>
+            )}
           </div>
 
           {/* Secondary filters */}

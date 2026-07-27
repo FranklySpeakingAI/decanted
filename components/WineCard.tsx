@@ -11,12 +11,14 @@ const MARKUP_DOT: Record<string, string> = {
   green: "bg-emerald-400",
   amber: "bg-amber-400",
   red:   "bg-rose-400",
+  none:  "bg-cream/25",
 }
 
 const MARKUP_TEXT: Record<string, string> = {
   green: "text-emerald-300",
   amber: "text-amber-300",
   red:   "text-rose-300",
+  none:  "text-cream/40",
 }
 
 interface WineCardProps {
@@ -102,7 +104,7 @@ export function WineCard({ wine, rank }: WineCardProps) {
         />
         <MetricCell
           label="Market est."
-          value={`~${cur} ${wine.marketPrice}`}
+          value={wine.marketPrice != null ? `~${cur} ${wine.marketPrice}` : "No data"}
         />
         {/* Markup cell with colour indicator */}
         <div
@@ -114,9 +116,9 @@ export function WineCard({ wine, rank }: WineCardProps) {
             Markup
           </span>
           <div className="flex items-center gap-1.5">
-            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", MARKUP_DOT[wine.markupColor])} />
-            <span className={cn("text-sm font-bold leading-none", MARKUP_TEXT[wine.markupColor])}>
-              {wine.markupFactor.toFixed(1)}×
+            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", MARKUP_DOT[wine.markupColor ?? "none"])} />
+            <span className={cn("text-sm font-bold leading-none", MARKUP_TEXT[wine.markupColor ?? "none"])}>
+              {wine.markupFactor != null ? `${wine.markupFactor.toFixed(1)}×` : "—"}
             </span>
           </div>
         </div>
@@ -125,11 +127,11 @@ export function WineCard({ wine, rank }: WineCardProps) {
       <div className="grid grid-cols-2 gap-1.5 mb-4">
         <MetricCell
           label="Critic score"
-          value={`${wine.criticScore} pts`}
+          value={wine.criticScore != null ? `${wine.criticScore} pts` : "—"}
         />
         <MetricCell
           label="Value score"
-          value={`${wine.totalValueScore}/100`}
+          value={wine.totalValueScore != null ? `${wine.totalValueScore}/100` : "No market data"}
           highlight
         />
       </div>

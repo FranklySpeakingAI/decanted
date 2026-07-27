@@ -10,6 +10,7 @@ const MARKUP_DOT: Record<string, string> = {
   green: "bg-emerald-500",
   amber: "bg-amber-500",
   red:   "bg-rose-500",
+  none:  "bg-stone-300",
 }
 
 interface FullWineListProps {
@@ -24,7 +25,7 @@ export function FullWineList({ wines, currency, selectedType }: FullWineListProp
       type,
       wines: wines
         .filter((w) => w.type === type)
-        .sort((a, b) => b.totalValueScore - a.totalValueScore),
+        .sort((a, b) => (b.totalValueScore ?? -1) - (a.totalValueScore ?? -1)),
     }))
     .filter((g) => g.wines.length > 0)
 
@@ -105,7 +106,7 @@ function WineRow({ wine, currency }: { wine: ScoredWine; currency: string }) {
   return (
     <div className="flex items-center gap-3 px-4 py-2.5">
       {/* Markup dot */}
-      <div className={cn("w-2 h-2 rounded-full shrink-0", MARKUP_DOT[wine.markupColor])} />
+      <div className={cn("w-2 h-2 rounded-full shrink-0", MARKUP_DOT[wine.markupColor ?? "none"])} />
 
       {/* Name + vintage */}
       <div className="flex-1 min-w-0">
@@ -122,7 +123,7 @@ function WineRow({ wine, currency }: { wine: ScoredWine; currency: string }) {
 
       {/* Markup */}
       <span className="text-xs text-stone-400 shrink-0 w-10 text-right">
-        {wine.markupFactor.toFixed(1)}×
+        {wine.markupFactor != null ? `${wine.markupFactor.toFixed(1)}×` : "—"}
       </span>
 
       {/* Critic score */}

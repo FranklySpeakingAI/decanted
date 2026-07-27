@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* -------------------------------------------------------------------------
-   Design tokens
+   Design tokens (Tailwind theme)
    ------------------------------------------------------------------------- */
 @theme inline {
   --color-wine:        #8b2d3f;
@@ -20,6 +20,42 @@
 }
 
 /* -------------------------------------------------------------------------
+   Theme tokens — White Wine (default)
+   ------------------------------------------------------------------------- */
+:root {
+  --bg-base:          #f5f0e8;
+  --bg-surface:       #ede4d0;
+  --bg-glass:         rgba(237, 228, 208, 0.75);
+  --bg-card:          #faf6ee;
+  --text-primary:     #3d3420;
+  --text-muted:       #8a7d5a;
+  --accent-primary:   #c8a84b;
+  --accent-lavender:  #9b8fbf;
+  --accent-sage:      #7a9b76;
+  --accent-border:    rgba(155, 143, 191, 0.30);
+  --pill-active-bg:   #c8a84b;
+  --pill-active-text: #3d3420;
+}
+
+/* -------------------------------------------------------------------------
+   Theme tokens — Red Wine
+   ------------------------------------------------------------------------- */
+[data-theme="red-wine"] {
+  --bg-base:          #1e0f0a;
+  --bg-surface:       #2c1a12;
+  --bg-glass:         rgba(44, 26, 18, 0.70);
+  --bg-card:          #341f15;
+  --text-primary:     #f2e8d9;
+  --text-muted:       #9c7d65;
+  --accent-primary:   #c8a84b;
+  --accent-green:     #4a6b45;
+  --accent-rust:      #a85432;
+  --accent-border:    rgba(200, 168, 75, 0.20);
+  --pill-active-bg:   #c8a84b;
+  --pill-active-text: #1e0f0a;
+}
+
+/* -------------------------------------------------------------------------
    Base
    ------------------------------------------------------------------------- */
 *,
@@ -29,13 +65,19 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body {
-  background-color: #f5ece0;
-  color: #1a0d10;
-  font-family: var(--font-sans), system-ui, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-inter), var(--font-sans), system-ui, sans-serif;
   min-height: 100dvh;
+}
+
+/* Typography */
+h1, h2, .wine-name, .wordmark {
+  font-family: var(--font-cormorant), Georgia, serif;
 }
 
 /* Safe-area inset for iOS */
@@ -44,13 +86,85 @@ body {
 }
 
 /* -------------------------------------------------------------------------
-   Background gradient sweep (input panel)
+   Hero animated background — slow 20s pulse (wine swirling in candlelight)
+   ------------------------------------------------------------------------- */
+@keyframes wine-pulse {
+  0%   { background-position: 0% 50% }
+  50%  { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
+
+.hero-animated-bg {
+  background: linear-gradient(
+    135deg,
+    var(--bg-base)    0%,
+    var(--bg-surface) 35%,
+    var(--bg-base)    55%,
+    var(--bg-surface) 75%,
+    var(--bg-base)    100%
+  );
+  background-size: 400% 400%;
+  animation: wine-pulse 20s ease infinite;
+  will-change: background-position;
+}
+
+/* -------------------------------------------------------------------------
+   Subtle noise texture overlay (~3% opacity for tactile feel)
+   ------------------------------------------------------------------------- */
+.noise-overlay {
+  position: relative;
+}
+
+.noise-overlay::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+/* -------------------------------------------------------------------------
+   Glassmorphism card (scan input)
+   ------------------------------------------------------------------------- */
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--accent-border);
+  border-radius: 16px;
+  padding: 28px;
+}
+
+/* -------------------------------------------------------------------------
+   How It Works step cards
+   ------------------------------------------------------------------------- */
+.how-card {
+  background: var(--bg-card);
+  border: 1px solid var(--accent-border);
+  border-top: 3px solid var(--accent-primary);
+  border-radius: 12px;
+  padding: 24px;
+  transition: transform 0.2s ease;
+}
+
+.how-card:hover {
+  transform: translateY(-2px);
+}
+
+/* -------------------------------------------------------------------------
+   Background gradient sweep (kept for results/loading screens)
    ------------------------------------------------------------------------- */
 @keyframes gradient-sweep {
   0%   { background-position: 0% 50% }
   50%  { background-position: 100% 50% }
   100% { background-position: 0% 50% }
 }
+
 .bg-sweep {
   background: linear-gradient(135deg, #f5ece0 0%, #edddd0 50%, #f5ece0 100%);
   background-size: 200% 200%;
@@ -64,6 +178,7 @@ body {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 .animate-fade-in-up {
   animation: fade-in-up 0.45s ease-out both;
 }
@@ -79,6 +194,7 @@ body {
   85%  { width: 82% }
   100% { width: 88% }
 }
+
 .progress-bar {
   animation: scan-progress 25s cubic-bezier(0.15, 0.5, 0.4, 1) forwards;
 }
@@ -95,6 +211,7 @@ body {
   width: 100%;
   height: 0;
 }
+
 .range-thumb::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -108,10 +225,12 @@ body {
   box-shadow: 0 0 0 1px rgba(201, 169, 110, 0.35), 0 2px 6px rgba(0,0,0,0.5);
   transition: transform 0.15s ease;
 }
+
 .range-thumb::-webkit-slider-thumb:hover,
 .range-thumb:active::-webkit-slider-thumb {
   transform: scale(1.2);
 }
+
 .range-thumb::-moz-range-thumb {
   width: 18px;
   height: 18px;

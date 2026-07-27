@@ -7,12 +7,14 @@ const MARKUP_DOT: Record<string, string> = {
   green: "bg-emerald-500",
   amber: "bg-amber-500",
   red:   "bg-rose-500",
+  none:  "bg-stone-300",
 }
 
 const MARKUP_TEXT: Record<string, string> = {
   green: "text-emerald-600",
   amber: "text-amber-600",
   red:   "text-rose-600",
+  none:  "text-stone-400",
 }
 
 interface TopPicksSectionProps {
@@ -90,7 +92,7 @@ function HeroCard({
       {/* Metrics row */}
       <div className="grid grid-cols-2 gap-1.5">
         <MetricCell label="Menu price" value={`${currency} ${wine.restaurantPrice}`} />
-        <MetricCell label="Est. market" value={`~${currency} ${wine.marketPrice}`} />
+        <MetricCell label="Est. market" value={wine.marketPrice != null ? `~${currency} ${wine.marketPrice}` : "No data"} />
 
         {/* Markup */}
         <div className="flex flex-col gap-0.5 p-2.5 rounded-xl border border-stone-100 bg-stone-50">
@@ -98,9 +100,9 @@ function HeroCard({
             Markup
           </span>
           <div className="flex items-center gap-1.5">
-            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", MARKUP_DOT[wine.markupColor])} />
-            <span className={cn("text-sm font-bold leading-none", MARKUP_TEXT[wine.markupColor])}>
-              {wine.markupFactor.toFixed(1)}×
+            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", MARKUP_DOT[wine.markupColor ?? "none"])} />
+            <span className={cn("text-sm font-bold leading-none", MARKUP_TEXT[wine.markupColor ?? "none"])}>
+              {wine.markupFactor != null ? `${wine.markupFactor.toFixed(1)}×` : "—"}
             </span>
           </div>
         </div>

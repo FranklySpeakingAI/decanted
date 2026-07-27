@@ -1,9 +1,24 @@
 import type { Metadata, Viewport } from "next"
 import { Geist } from "next/font/google"
+import { Cormorant_Garamond, Inter } from "next/font/google"
 import "./globals.css"
 
 const geist = Geist({
   variable: "--font-geist-sans",
+  subsets: ["latin"],
+  display: "swap",
+})
+
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
+})
+
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 })
@@ -27,7 +42,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={geist.variable}>
+    <html lang="en" className={`${geist.variable} ${cormorant.variable} ${inter.variable}`}>
+      {/* Prevent theme flash: read localStorage before first paint */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('decanted-theme');if(t==='red-wine')document.documentElement.setAttribute('data-theme','red-wine')}catch(e){}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   )
