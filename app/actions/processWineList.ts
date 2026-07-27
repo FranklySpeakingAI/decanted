@@ -1,5 +1,6 @@
 "use server"
 
+import "@/lib/polyfills" // Math.sumPrecise for unpdf/pdf.js — must load before extractPDF
 import { headers } from "next/headers"
 import { lookup } from "node:dns/promises"
 import { isIP } from "node:net"

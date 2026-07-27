@@ -126,7 +126,7 @@ export const LIMITS = {
   maxWineLines: 300,
   maxWinesForRanking: 150,
   enrichBatchSize: 20,
-  extractChunkLines: 70, // split large lists so no single extraction call is huge
+  extractChunkLines: 35, // smaller chunks → faster parallel calls, no output truncation
 } as const
 
 // Run `worker` over items with at most `limit` in flight.
@@ -242,12 +242,16 @@ export async function runExtraction(
 
   const usage: Usage = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
   const all: ExtractedWine[] = []
-  await mapLimit(chunks, 5, async (chunk) => {
+  await mapLimit(chunks, 10, async (chunk) => {
     const { text: out, usage: u } = await callAnthropic(key, {
       system: EXTRACTION_PROMPT,
       user: chunk,
-      maxTokens: 4_000,
-      timeoutMs: 40_000,
+      // A dense chunk emits a lot of JSON; too small a cap truncates and silently
+      // drops the tail wines (measured: a 70-line chunk lost 56 vs 66 at 4k). With
+      // 35-line chunks ~2.5k tokens is typical, so 6k clears them with headroom and
+      // the loose parser backstops anything that still overflows.
+      maxTokens: 6_000,
+      timeoutMs: 50_000,
       label: "extraction",
       cacheSystem: true,
     })
