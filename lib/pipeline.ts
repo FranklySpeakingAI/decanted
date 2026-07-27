@@ -58,7 +58,7 @@ function rawFromCatalog(row: Partial<WineRow>, restaurantPrice: number): RawWine
 
 export async function runPipeline(input: PipelineInput): Promise<PipelineResult> {
   const key = process.env.ANTHROPIC_API_KEY
-  if (!key) throw new Error("Wine analysis isn't configured yet.")
+  if (!key) throw new Error("Die Weinanalyse ist noch nicht konfiguriert.")
 
   const supabase = getServiceClient()
   const normalized = normalizeText(input.content)
@@ -76,7 +76,7 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   const budget = await checkDailyBudget()
   if (!budget.ok) {
     throw new Error(
-      `Today's scanning budget (CHF ${budget.capChf}) is used up (CHF ${budget.spentChf.toFixed(2)}). Please try again tomorrow.`,
+      `Das heutige Scan-Budget (CHF ${budget.capChf}) ist aufgebraucht (CHF ${budget.spentChf.toFixed(2)}). Bitte versuche es morgen wieder.`,
     )
   }
 
@@ -89,7 +89,7 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   await recordUsage({ model: ANTHROPIC_MODEL, step: "extraction", usage: ex.usage, clientIp: input.clientIp })
   const extracted = ex.wines
   if (!extracted.length) {
-    throw new Error("Could not parse any wines from the document. Please try a different file.")
+    throw new Error("Es konnten keine Weine aus dem Dokument gelesen werden. Bitte versuche eine andere Datei.")
   }
 
   // 3. DB match (exact canonical_key, then trigram).
@@ -108,9 +108,17 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     }
     await mapWithConcurrency(batches, 5, async (slice) => {
       const batch = slice.map((i) => extracted[i])
-      const res = await enrichBatch(key, batch)
-      await recordUsage({ model: ANTHROPIC_MODEL, step: "enrichment", usage: res.usage, clientIp: input.clientIp })
-      slice.forEach((idx, j) => enrichedByIdx.set(idx, res.wines[j] ?? bareFallback(extracted[idx])))
+      try {
+        const res = await enrichBatch(key, batch)
+        await recordUsage({ model: ANTHROPIC_MODEL, step: "enrichment", usage: res.usage, clientIp: input.clientIp })
+        slice.forEach((idx, j) => enrichedByIdx.set(idx, res.wines[j] ?? bareFallback(extracted[idx])))
+      } catch (e) {
+        // A slow/aborted batch must NOT sink the whole scan — a cold 250-wine
+        // list runs a dozen batches and any one can time out. Degrade this
+        // batch to bare wines (no market data) and keep the rest.
+        console.error("[pipeline] enrich batch failed:", e instanceof Error ? e.message : e)
+        slice.forEach((idx) => enrichedByIdx.set(idx, bareFallback(extracted[idx])))
+      }
     })
   }
 

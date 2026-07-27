@@ -26,9 +26,12 @@ export function RangeSlider({
   const highPct = ((high - min) / range) * 100
 
   return (
-    <div className={cn("space-y-3", className)}>
-      {/* Value labels */}
-      <div className="flex justify-between text-xs font-medium text-cream/70">
+    <div className={cn("space-y-2", className)}>
+      {/* Selected range — updates live as the thumbs move */}
+      <div
+        className="flex justify-between text-sm font-semibold"
+        style={{ color: "var(--text-primary)" }}
+      >
         <span>{formatLabel(low)}</span>
         <span>{formatLabel(high)}</span>
       </div>
@@ -36,11 +39,14 @@ export function RangeSlider({
       {/* Track + thumbs */}
       <div className="relative h-5 flex items-center">
         {/* Background track */}
-        <div className="absolute inset-x-0 h-[3px] bg-white/10 rounded-full" />
+        <div
+          className="absolute inset-x-0 h-[3px] rounded-full"
+          style={{ background: "var(--accent-border)" }}
+        />
         {/* Active segment */}
         <div
-          className="absolute h-[3px] bg-gold rounded-full"
-          style={{ left: `${lowPct}%`, width: `${highPct - lowPct}%` }}
+          className="absolute h-[3px] rounded-full"
+          style={{ left: `${lowPct}%`, width: `${highPct - lowPct}%`, background: "var(--accent-primary)" }}
         />
         {/* Min thumb */}
         <input
@@ -48,6 +54,7 @@ export function RangeSlider({
           min={min}
           max={max}
           value={low}
+          aria-label="Mindestpreis"
           onChange={(e) => {
             const v = Math.min(Number(e.target.value), high - 1)
             onChange([v, high])
@@ -60,12 +67,22 @@ export function RangeSlider({
           min={min}
           max={max}
           value={high}
+          aria-label="Höchstpreis"
           onChange={(e) => {
             const v = Math.max(Number(e.target.value), low + 1)
             onChange([low, v])
           }}
           className="range-thumb absolute w-full"
         />
+      </div>
+
+      {/* Absolute bounds of the data set */}
+      <div
+        className="flex justify-between text-[10px]"
+        style={{ color: "var(--text-muted)" }}
+      >
+        <span>{formatLabel(min)}</span>
+        <span>{formatLabel(max)}</span>
       </div>
     </div>
   )

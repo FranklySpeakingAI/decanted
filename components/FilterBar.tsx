@@ -3,17 +3,17 @@
 import type { FoodPairing, WineRegion } from "@/lib/scoring"
 import { Button } from "@/components/ui/button"
 import { RangeSlider } from "@/components/ui/slider"
-import { FILTERS } from "@/lib/constants"
+import { FILTERS, FOOD_PAIRING_LABELS, REGION_GROUP_LABELS } from "@/lib/constants"
 
 // ---------------------------------------------------------------------------
-// Food pairing options (label, emoji, data value)
+// Food pairing options (emoji + data value; label comes from FOOD_PAIRING_LABELS)
 // ---------------------------------------------------------------------------
-const FOOD_OPTIONS: { label: string; emoji: string; value: FoodPairing }[] = [
-  { label: "Red Meat",   emoji: "🥩", value: "Red Meat" },
-  { label: "White Meat", emoji: "🍗", value: "White Meat" },
-  { label: "Game",       emoji: "🦌", value: "Game" },
-  { label: "Fish",       emoji: "🐟", value: "Fish" },
-  { label: "Vegetarian", emoji: "🥗", value: "Vegetarian" },
+const FOOD_OPTIONS: { emoji: string; value: FoodPairing }[] = [
+  { emoji: "🥩", value: "Red Meat" },
+  { emoji: "🍗", value: "White Meat" },
+  { emoji: "🦌", value: "Game" },
+  { emoji: "🐟", value: "Fish" },
+  { emoji: "🥗", value: "Vegetarian" },
 ]
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ export function FilterBar({ filters, onChange, priceBounds, currency }: FilterBa
       <div>
         <SectionLabel>{FILTERS.foodPairing}</SectionLabel>
         <div className="flex gap-1.5 flex-wrap">
-          {FOOD_OPTIONS.map(({ label, emoji, value }) => (
+          {FOOD_OPTIONS.map(({ emoji, value }) => (
             <Button
               key={value}
               variant="filter"
@@ -93,7 +93,7 @@ export function FilterBar({ filters, onChange, priceBounds, currency }: FilterBa
               onClick={() => toggleFood(value)}
             >
               <span>{emoji}</span>
-              {label}
+              {FOOD_PAIRING_LABELS[value] ?? value}
             </Button>
           ))}
         </div>
@@ -111,7 +111,7 @@ export function FilterBar({ filters, onChange, priceBounds, currency }: FilterBa
               data-active={filters.region === label}
               onClick={() => toggleRegion(label)}
             >
-              {label}
+              {REGION_GROUP_LABELS[label] ?? label}
             </Button>
           ))}
         </div>

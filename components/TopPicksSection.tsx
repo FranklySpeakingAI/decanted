@@ -2,7 +2,7 @@
 
 import type { ScoredWine } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
-import { METRICS, UI } from "@/lib/constants"
+import { METRICS, UI, WINE_TYPE_LABELS } from "@/lib/constants"
 
 const MARKUP_DOT: Record<string, string> = {
   green: "bg-emerald-500",
@@ -85,7 +85,7 @@ function HeroCard({
             {wine.region}
           </span>
           <span className="rounded-full bg-gold/15 border border-gold/25 px-2 py-0.5 text-[10px] text-gold font-medium">
-            {wine.type}
+            {WINE_TYPE_LABELS[wine.type] ?? wine.type}
           </span>
         </div>
       </div>
@@ -93,7 +93,7 @@ function HeroCard({
       {/* Metrics row */}
       <div className="grid grid-cols-2 gap-1.5">
         <MetricCell label={METRICS.menuPrice} value={`${currency} ${wine.restaurantPrice}`} />
-        <MetricCell label={METRICS.estMarket} value={wine.marketPrice != null ? `~${currency} ${wine.marketPrice}` : "No data"} />
+        <MetricCell label={METRICS.estMarket} value={wine.marketPrice != null ? `~${currency} ${wine.marketPrice}` : "Keine Daten"} />
 
         {/* Markup */}
         <div className="flex flex-col gap-0.5 p-2.5 rounded-xl border border-stone-100 bg-stone-50">

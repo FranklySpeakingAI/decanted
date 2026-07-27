@@ -2,7 +2,7 @@
 
 import type { WineType } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
-import { FILTERS } from "@/lib/constants"
+import { FILTERS, WINE_TYPE_LABELS } from "@/lib/constants"
 
 export const TYPE_ORDER: WineType[] = FILTERS.wineTypes.slice(1) as WineType[]
 
@@ -26,7 +26,7 @@ export function TypeFilterBar({ availableTypes, selected, onChange }: TypeFilter
           active={selected === type}
           onClick={() => onChange(selected === type ? null : type)}
         >
-          {type}
+          {WINE_TYPE_LABELS[type] ?? type}
         </Pill>
       ))}
     </div>

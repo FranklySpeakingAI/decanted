@@ -42,7 +42,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${cormorant.variable} ${inter.variable}`}>
+    <html lang="de" className={`${geist.variable} ${cormorant.variable} ${inter.variable}`}>
       {/* Prevent theme flash: read localStorage before first paint */}
       <head>
         <script

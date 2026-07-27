@@ -204,7 +204,7 @@ Return ONLY a JSON array; for each wine keep name/vintage/menuPrice/type and add
 - marketPriceChf: estimated SWISS RETAIL price in CHF for a 75cl bottle, as sold at Coop Mondovino / Denner / Flaschenpost level. If you genuinely cannot estimate it, use null — do NOT guess wildly.
 - criticScore: integer 80–100 ONLY if you are reasonably confident (Parker/Wine Spectator/Vinum band). If unknown, use null. Never invent a score.
 - pairings: subset of ["Red Meat","White Meat","Game","Fish","Vegetarian"]
-- sommelierNote: ≤20 words on value and food fit, or null
+- sommelierNote: max. 20 Wörter auf Deutsch (Schweizer Hochdeutsch, "du"-Form, kein ß) zu Preis-Leistung und Speisenempfehlung, oder null
 
 Currency is always CHF. No prose, no markdown.
 
@@ -237,26 +237,32 @@ export async function runExtraction(
     chunks = [truncated]
   }
   if (!chunks.some((c) => c.trim())) {
-    throw new Error("No wine lines detected. Please check that the document contains a wine list.")
+    throw new Error("Keine Weinzeilen erkannt. Bitte prüfe, ob das Dokument eine Weinkarte enthält.")
   }
 
   const usage: Usage = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
   const all: ExtractedWine[] = []
   await mapLimit(chunks, 6, async (chunk) => {
-    const { text: out, usage: u } = await callAnthropic(key, {
-      system: EXTRACTION_PROMPT,
-      user: chunk,
-      // A dense chunk emits a lot of JSON; too small a cap truncates and silently
-      // drops the tail wines (measured: a 70-line chunk lost 56 vs 66 at 4k). With
-      // 35-line chunks ~2.5k tokens is typical, so 6k clears them with headroom and
-      // the loose parser backstops anything that still overflows.
-      maxTokens: 6_000,
-      timeoutMs: 50_000,
-      label: "extraction",
-      cacheSystem: true,
-    })
-    addUsage(usage, u)
-    for (const w of parseExtractionArray(out)) all.push(w)
+    try {
+      const { text: out, usage: u } = await callAnthropic(key, {
+        system: EXTRACTION_PROMPT,
+        user: chunk,
+        // A dense chunk emits a lot of JSON; too small a cap truncates and silently
+        // drops the tail wines (measured: a 70-line chunk lost 56 vs 66 at 4k). With
+        // 35-line chunks ~2.5k tokens is typical, so 6k clears them with headroom and
+        // the loose parser backstops anything that still overflows.
+        maxTokens: 6_000,
+        timeoutMs: 50_000,
+        label: "extraction",
+        cacheSystem: true,
+      })
+      addUsage(usage, u)
+      for (const w of parseExtractionArray(out)) all.push(w)
+    } catch (e) {
+      // One aborted/slow chunk shouldn't fail the whole scan — keep the wines
+      // the other chunks extracted rather than throwing.
+      console.error("[llm] extraction chunk failed:", e instanceof Error ? e.message : e)
+    }
   })
 
   const wines = dedupeExtracted(all).slice(0, LIMITS.maxWinesForRanking)

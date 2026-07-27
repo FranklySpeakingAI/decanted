@@ -21,16 +21,16 @@ export async function processWineList(formData: FormData): Promise<ProcessResult
     const h = await headers()
     const ip = getClientIP(h)
     if (await isRateLimited(ip)) {
-      return { success: false, error: "You've reached today's scan limit. Please try again tomorrow." }
+      return { success: false, error: "Du hast dein heutiges Scan-Limit erreicht. Bitte versuche es morgen wieder." }
     }
 
     const mode = formData.get("mode") as string | null
     if (mode === "url") return processURL(formData, ip)
     if (mode === "file") return processFile(formData, ip)
-    return { success: false, error: "Invalid request." }
+    return { success: false, error: "Ungültige Anfrage." }
   } catch (err) {
     console.error("[processWineList]", err instanceof Error ? err.message : err)
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: "Etwas ist schiefgelaufen. Bitte versuche es erneut." }
   }
 }
 
@@ -67,16 +67,16 @@ async function assertPublicUrl(raw: string): Promise<URL> {
   try {
     url = new URL(raw)
   } catch {
-    throw new Error("Please provide a valid URL.")
+    throw new Error("Bitte gib eine gültige URL ein.")
   }
-  if (!["http:", "https:"].includes(url.protocol)) throw new Error("Only http and https URLs are supported.")
+  if (!["http:", "https:"].includes(url.protocol)) throw new Error("Es werden nur http- und https-URLs unterstützt.")
   const host = url.hostname.toLowerCase()
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal")) {
-    throw new Error("That address isn't allowed.")
+    throw new Error("Diese Adresse ist nicht zulässig.")
   }
   const results = await lookup(host, { all: true }).catch(() => [])
-  if (!results.length) throw new Error("Could not resolve that address.")
-  if (results.some((r) => isBlockedIp(r.address))) throw new Error("That address isn't allowed.")
+  if (!results.length) throw new Error("Diese Adresse konnte nicht aufgelöst werden.")
+  if (results.some((r) => isBlockedIp(r.address))) throw new Error("Diese Adresse ist nicht zulässig.")
   return url
 }
 
@@ -93,13 +93,13 @@ async function safeFetch(raw: string, timeoutMs: number): Promise<Response> {
 // ---------------------------------------------------------------------------
 async function processURL(formData: FormData, ip: string): Promise<ProcessResult> {
   const raw = ((formData.get("url") as string | null) ?? "").trim()
-  if (!raw || raw.length > 2048) return { success: false, error: "Please provide a valid URL." }
+  if (!raw || raw.length > 2048) return { success: false, error: "Bitte gib eine gültige URL ein." }
 
   let content = ""
   let isHTML = false
   try {
     const res = await safeFetch(raw, 15_000)
-    if (!res.ok) return { success: false, error: "Could not access that URL. Please check the address and try again." }
+    if (!res.ok) return { success: false, error: "Diese URL ist nicht erreichbar. Bitte prüfe die Adresse und versuche es erneut." }
 
     const contentType = res.headers.get("content-type") ?? ""
     const isPDF = contentType.includes("application/pdf") || new URL(raw).pathname.toLowerCase().endsWith(".pdf")
@@ -142,10 +142,10 @@ async function processURL(formData: FormData, ip: string): Promise<ProcessResult
     const { wines, meta } = await runPipeline({ content, sourceType: "url", sourceRef: raw, clientIp: ip })
     return toResult(wines, meta)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Analysis failed"
+    const msg = err instanceof Error ? err.message : "Analyse fehlgeschlagen"
     console.error("[processURL]", msg)
-    if (isHTML && msg.includes("Could not parse any wines")) {
-      return { success: false, error: "No wine list found on that page. Try pasting the direct link to their wine list or PDF." }
+    if (isHTML && msg.includes("keine Weine")) {
+      return { success: false, error: "Auf dieser Seite wurde keine Weinkarte gefunden. Füge den direkten Link zur Weinkarte oder zum PDF ein." }
     }
     return { success: false, error: msg }
   }
@@ -156,7 +156,7 @@ async function processURL(formData: FormData, ip: string): Promise<ProcessResult
 // ---------------------------------------------------------------------------
 async function processFile(formData: FormData, ip: string): Promise<ProcessResult> {
   const file = formData.get("file") as File | null
-  if (!file) return { success: false, error: "No file provided." }
+  if (!file) return { success: false, error: "Keine Datei ausgewählt." }
 
   const validation = await validateFile(file)
   if (!validation.valid) {
@@ -169,17 +169,17 @@ async function processFile(formData: FormData, ip: string): Promise<ProcessResul
     content = await extractTextContent(file.type, buffer)
   } catch (err) {
     console.error("[extractTextContent]", err instanceof Error ? err.message : err)
-    return { success: false, error: err instanceof Error ? err.message : "We couldn't read that file." }
+    return { success: false, error: err instanceof Error ? err.message : "Diese Datei konnte nicht gelesen werden." }
   }
   if (!content.trim()) {
-    return { success: false, error: "The file appears to be empty or contains only images. Please try a text-based PDF." }
+    return { success: false, error: "Die Datei scheint leer zu sein oder enthält nur Bilder. Bitte verwende ein PDF mit auswählbarem Text." }
   }
 
   try {
     const { wines, meta } = await runPipeline({ content, sourceType: "file", sourceRef: file.name, clientIp: ip })
     return toResult(wines, meta)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Analysis failed"
+    const msg = err instanceof Error ? err.message : "Analyse fehlgeschlagen"
     console.error("[processFile]", msg)
     return { success: false, error: msg }
   }
@@ -198,7 +198,7 @@ async function extractTextContent(mimeType: string, buffer: ArrayBuffer): Promis
 
 async function extractPDF(buf: Buffer): Promise<string> {
   if (buf.byteLength > MAX_PDF_BYTES) {
-    throw new Error("That PDF is too large (over 10 MB). Please upload just the wine-list section.")
+    throw new Error("Dieses PDF ist zu gross (über 10 MB). Bitte lade nur den Weinkarten-Teil hoch.")
   }
   const { getDocumentProxy, extractText } = await import("unpdf")
   const pdf = await getDocumentProxy(new Uint8Array(buf))
@@ -210,7 +210,7 @@ async function extractPDF(buf: Buffer): Promise<string> {
   if (merged.trim().length < 50) {
     // No text layer — image-only PDF. OCR fallback is scaffolded but off by
     // default (heavy on serverless; see scripts/prefill/README + rebuild §2.7).
-    throw new Error("This PDF appears to be image-only (no selectable text). OCR isn't enabled yet — please try a text-based PDF.")
+    throw new Error("Dieses PDF enthält offenbar nur Bilder (kein auswählbarer Text). OCR ist noch nicht aktiviert — bitte verwende ein PDF mit auswählbarem Text.")
   }
   return merged
 }

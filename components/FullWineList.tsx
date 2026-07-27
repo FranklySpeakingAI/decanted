@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight } from "lucide-react"
 import type { ScoredWine, WineType } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 import { TYPE_ORDER } from "@/components/TypeFilterBar"
-import { UI, METRICS } from "@/lib/constants"
+import { UI, METRICS, WINE_TYPE_LABELS } from "@/lib/constants"
 
 const MARKUP_DOT: Record<string, string> = {
   green: "bg-emerald-500",
@@ -85,7 +85,7 @@ function WineTypeGroup({
           {open
             ? <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
             : <ChevronRight className="w-3.5 h-3.5 text-stone-400" />}
-          <span className="text-sm font-semibold text-stone-700">{type}</span>
+          <span className="text-sm font-semibold text-stone-700">{WINE_TYPE_LABELS[type] ?? type}</span>
           <span className="text-xs text-stone-400">— {UI.allWinesFound(wines.length)}</span>
         </div>
         <span className="text-[10px] text-stone-400">{UI.sortedByValue}</span>

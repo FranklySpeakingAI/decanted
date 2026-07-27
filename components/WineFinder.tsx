@@ -56,13 +56,13 @@ function ThemeToggle() {
       onClick={toggle}
       suppressHydrationWarning
       className="theme-toggle"
-      aria-label="Switch wine theme"
+      aria-label="Weinthema wechseln"
     >
       <span className={cn("toggle-opt", isWhite && "is-active")}>
-        🥂 <span className="opt-label">White Wine</span>
+        🥂 <span className="opt-label">Weisswein</span>
       </span>
       <span className={cn("toggle-opt", !isWhite && "is-active")}>
-        🍷 <span className="opt-label">Red Wine</span>
+        🍷 <span className="opt-label">Rotwein</span>
       </span>
     </button>
   )
@@ -94,18 +94,18 @@ function Wordmark() {
 const HOW_IT_WORKS = [
   {
     n: "01",
-    title: "Upload your list",
-    body: "Drop a PDF or paste the restaurant URL. We do the rest.",
+    title: "Weinkarte hochladen",
+    body: "Lade ein PDF hoch oder füge die Restaurant-URL ein. Den Rest übernehmen wir.",
   },
   {
     n: "02",
-    title: "We analyse every wine",
-    body: "Our AI checks markup, critic scores, and market value across the full list.",
+    title: "Wir analysieren jeden Wein",
+    body: "Unsere KI prüft Aufschlag, Kritiker-Bewertungen und Marktwert der ganzen Karte.",
   },
   {
     n: "03",
-    title: "Get your top picks",
-    body: "See the best value bottles ranked for your food, your budget, your taste.",
+    title: "Deine Top-Weine erhalten",
+    body: "Sieh die besten Preis-Leistungs-Weine — passend zu deinem Essen, Budget und Geschmack.",
   },
 ]
 
@@ -243,7 +243,7 @@ export function WineFinder() {
                   className="text-xs font-semibold tracking-[0.2em] uppercase mb-6"
                   style={{ color: "var(--accent-primary)" }}
                 >
-                  ✦ AI-Powered Wine Scanner
+                  ✦ KI-gestützter Weinkarten-Scanner
                 </p>
 
                 {/* Headline */}
@@ -255,7 +255,7 @@ export function WineFinder() {
                     color: "var(--text-primary)",
                   }}
                 >
-                  Stop overpaying<br />for wine.
+                  Zahl nie mehr<br />zu viel für Wein.
                 </h1>
 
                 {/* Subheadline */}
@@ -263,13 +263,13 @@ export function WineFinder() {
                   className="text-lg leading-relaxed mb-9 max-w-lg mx-auto"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Upload your restaurant&rsquo;s wine list. Decanted finds the best value
-                  bottles &mdash; ranked by markup, critic score, and what you&rsquo;re eating.
+                  Lade die Weinkarte deines Restaurants hoch. Decanted findet die besten
+                  Preis-Leistungs-Weine &mdash; sortiert nach Aufschlag, Bewertung und deinem Essen.
                 </p>
 
                 {/* Benefit pills */}
                 <div className="flex flex-wrap gap-2.5 justify-center mb-10">
-                  {["📄 PDF or URL", "🍷 100+ wines analysed", "⚡ Results in seconds"].map((pill) => (
+                  {["📄 PDF oder URL", "🍷 100+ Weine analysiert", "⚡ Ergebnis in Sekunden"].map((pill) => (
                     <span
                       key={pill}
                       className="px-4 py-1.5 rounded-full text-sm font-medium"
@@ -344,7 +344,7 @@ export function WineFinder() {
 
                 {/* Trust line */}
                 <p className="text-xs mt-5" style={{ color: "var(--text-muted)" }}>
-                  No data stored. No account needed. Scans deleted instantly.
+                  Keine Datenspeicherung. Kein Konto nötig. Scans werden sofort gelöscht.
                 </p>
 
               </div>
@@ -362,7 +362,7 @@ export function WineFinder() {
                   color: "var(--text-primary)",
                 }}
               >
-                Three steps to your perfect bottle
+In drei Schritten zur perfekten Flasche
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {HOW_IT_WORKS.map(({ n, title, body }) => (
@@ -421,7 +421,7 @@ export function WineFinder() {
                 color: "var(--pill-active-text)",
               }}
             >
-              Scan Wine List →
+              Weinkarte scannen →
             </button>
           </div>
         </>
@@ -483,8 +483,8 @@ export function WineFinder() {
               {meta && (
                 <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
                   {meta.fromCache
-                    ? "Served from cache — no new analysis needed"
-                    : `${meta.dbHits}/${meta.total} matched from the catalogue · ${meta.enriched} newly analysed`}
+                    ? "Aus dem Cache geladen — keine neue Analyse nötig"
+                    : `${meta.dbHits}/${meta.total} aus dem Katalog · ${meta.enriched} neu analysiert`}
                 </p>
               )}
             </div>
