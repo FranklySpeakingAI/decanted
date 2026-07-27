@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist } from "next/font/google"
 import { Cormorant_Garamond, Inter } from "next/font/google"
 import "./globals.css"
+import { APP } from "@/lib/constants"
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -24,9 +25,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Decanted — Wine Value Finder",
-  description:
-    "Instantly find the best-value wines on any restaurant list. Powered by AI sommelier analysis.",
+  title: APP.pageTitle,
+  description: APP.description,
   robots: { index: false, follow: false },
 }
 

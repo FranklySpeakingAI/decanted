@@ -1,9 +1,11 @@
 "use client"
 
 import { useRef, useState, useCallback } from "react"
-import { Upload, FileText, X } from "lucide-react"
+import { Upload, FileText, X, Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { validateFile, friendlyValidationError } from "@/lib/validators"
 import { cn } from "@/lib/utils"
+import { UI, UPLOAD, VALIDATION } from "@/lib/constants"
 
 const ACCEPT = ".pdf,.docx,.xlsx"
 const ACCEPT_MIME =
@@ -47,36 +49,22 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (file) onSubmit(file) }} className="space-y-3">
       <div className="space-y-1.5">
-        <span
-          className="text-[10px] font-bold uppercase tracking-widest"
-          style={{ color: "var(--text-muted)" }}
-        >
-          Upload wine list
+        <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+          {UPLOAD.label}
         </span>
 
         {file ? (
-          <div
-            className="flex items-center gap-3 rounded-xl p-4"
-            style={{
-              border: "1px solid rgba(74, 107, 69, 0.5)",
-              background: "rgba(74, 107, 69, 0.08)",
-            }}
-          >
-            <FileText className="w-5 h-5 shrink-0" style={{ color: "var(--accent-sage, #7a9b76)" }} />
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
+            <FileText className="w-5 h-5 text-emerald-600 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                {file.name}
-              </p>
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                {(file.size / 1024).toFixed(0)} KB
-              </p>
+              <p className="text-sm font-medium text-stone-800 truncate">{file.name}</p>
+              <p className="text-xs text-stone-400">{(file.size / 1024).toFixed(0)} KB</p>
             </div>
             <button
               type="button"
               onClick={() => { setFile(null); setError(null) }}
-              className="transition-colors"
-              style={{ color: "var(--text-muted)" }}
-              aria-label="Remove file"
+              className="text-stone-400 hover:text-stone-600 transition-colors"
+              aria-label={VALIDATION.removeFile}
             >
               <X className="w-4 h-4" />
             </button>
@@ -85,7 +73,7 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
           <div
             role="button"
             tabIndex={0}
-            aria-label="Click to select file or drag and drop"
+            aria-label={VALIDATION.dropzoneLabel}
             onClick={() => inputRef.current?.click()}
             onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
@@ -94,24 +82,15 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
             onDrop={handleDrop}
             className={cn(
               "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer",
+              isDragging
+                ? "border-gold/60 bg-gold/5"
+                : "border-stone-300 bg-stone-50 hover:border-stone-400 hover:bg-stone-100",
             )}
-            style={{
-              borderColor: isDragging ? "var(--accent-primary)" : "var(--accent-border)",
-              background: isDragging ? "rgba(200,168,75,0.06)" : "var(--bg-surface)",
-              boxShadow: isDragging ? "0 0 0 2px var(--accent-primary)" : "none",
-            }}
           >
-            <Upload
-              className="w-7 h-7 transition-colors"
-              style={{ color: isDragging ? "var(--accent-primary)" : "var(--text-muted)" }}
-            />
+            <Upload className={cn("w-7 h-7 transition-colors", isDragging ? "text-gold" : "text-stone-400")} />
             <div>
-              <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                Tap to choose a file
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                PDF, Word, or Excel · Max 10 MB
-              </p>
+              <p className="text-sm font-medium text-stone-600">{VALIDATION.tapToChoose}</p>
+              <p className="text-xs text-stone-400 mt-0.5">{VALIDATION.dropzoneHint}</p>
             </div>
           </div>
         )}
@@ -129,17 +108,10 @@ export function FileUpload({ onSubmit, disabled }: FileUploadProps) {
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={disabled || !file}
-        className="w-full h-12 rounded-[10px] text-base font-bold transition-all disabled:opacity-40 disabled:pointer-events-none"
-        style={{
-          background: "var(--accent-primary)",
-          color: "var(--pill-active-text)",
-        }}
-      >
-        Analyse My Wine List →
-      </button>
+      <Button type="submit" className="w-full" size="lg" disabled={disabled || !file}>
+        <Search className="w-4 h-4" />
+        {UI.findBestPours}
+      </Button>
     </form>
   )
 }

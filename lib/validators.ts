@@ -1,3 +1,5 @@
+import { ERRORS } from "@/lib/constants"
+
 export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
 export const ALLOWED_MIME_TYPES = new Set([
@@ -85,7 +87,7 @@ export async function validateFile(file: File): Promise<ValidationResult> {
 
 export function friendlyValidationError(error: string): string {
   if (error === "size_exceeded") {
-    return "This file is too large. Please upload a file under 10 MB."
+    return ERRORS.fileTooLarge
   }
-  return "This file type isn't supported. Please upload a PDF, Word, or Excel file."
+  return ERRORS.fileType
 }

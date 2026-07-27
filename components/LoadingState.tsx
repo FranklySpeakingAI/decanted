@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react"
 import { AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { LOADING } from "@/lib/constants"
 
 const MESSAGES = [
-  { pct: 0,  text: "Reading your wine list…" },
-  { pct: 35, text: "Checking market prices…" },
-  { pct: 65, text: "Finding your best pours…" },
+  { pct: 0,  text: LOADING.messages[0] },
+  { pct: 35, text: LOADING.messages[1] },
+  { pct: 65, text: LOADING.messages[2] },
 ]
 
 interface LoadingStateProps {
@@ -44,7 +45,7 @@ export function LoadingState({ startedAt }: LoadingStateProps) {
         <p className="text-base font-semibold text-stone-800 transition-all duration-500">
           {MESSAGES[msgIndex].text}
         </p>
-        <p className="text-xs text-stone-400">Our sommelier is hard at work</p>
+        <p className="text-xs text-stone-400">{LOADING.subtitle}</p>
       </div>
 
       {/* Progress bar */}
@@ -53,9 +54,9 @@ export function LoadingState({ startedAt }: LoadingStateProps) {
           <div className="progress-bar h-full rounded-full bg-gradient-to-r from-wine-accent via-wine-accent to-gold" />
         </div>
         <div className="flex justify-between text-[10px] text-stone-400">
-          <span>Reading</span>
-          <span>Pricing</span>
-          <span>Scoring</span>
+          <span>{LOADING.stages[0]}</span>
+          <span>{LOADING.stages[1]}</span>
+          <span>{LOADING.stages[2]}</span>
         </div>
       </div>
 
@@ -64,7 +65,7 @@ export function LoadingState({ startedAt }: LoadingStateProps) {
         <Alert variant="warning">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <AlertDescription>
-            Still working — a large wine list can take a little longer. Hang tight!
+            {LOADING.slowWarning}
           </AlertDescription>
         </Alert>
       )}
