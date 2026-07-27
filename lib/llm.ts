@@ -220,22 +220,21 @@ export async function runExtraction(
 ): Promise<{ wines: ExtractedWine[]; usage: Usage }> {
   const truncated = text.slice(0, LIMITS.maxExtractedChars)
 
-  // Small docs (stripped HTML) → one call on the whole text. Large docs → the
-  // regex-prefiltered lines, split into chunks so each call stays small and the
-  // chunks run in parallel. A single 150-wine extraction call is too slow and
-  // trips the abort timeout.
+  // Chunking is driven by wine-line count, NOT raw char count: a dense list can
+  // be short in characters but hold far more wines than fit in one call's
+  // maxTokens (a truncated response loses wines — see parseObjectArray). Split
+  // whenever the regex prefilter finds more than one chunk's worth of lines so
+  // every call's output stays comfortably under the token cap. Short prose
+  // (stripped HTML, where wines aren't line-delimited) falls back to one call.
+  const lines = extractWineLines(truncated)
   let chunks: string[]
-  if (truncated.length < 12_000) {
-    chunks = [truncated]
-  } else {
-    const lines = extractWineLines(truncated)
-    if (!lines.length) {
-      throw new Error("No wine lines detected. Please check that the document contains a wine list.")
-    }
+  if (lines.length > LIMITS.extractChunkLines || (lines.length && truncated.length >= 12_000)) {
     chunks = []
     for (let i = 0; i < lines.length; i += LIMITS.extractChunkLines) {
       chunks.push(lines.slice(i, i + LIMITS.extractChunkLines).join("\n"))
     }
+  } else {
+    chunks = [truncated]
   }
   if (!chunks.some((c) => c.trim())) {
     throw new Error("No wine lines detected. Please check that the document contains a wine list.")
@@ -281,41 +280,62 @@ export async function enrichBatch(
 // ---------------------------------------------------------------------------
 // Parsers
 // ---------------------------------------------------------------------------
-function sliceArray(text: string): string {
-  const s = text.indexOf("[")
-  const e = text.lastIndexOf("]")
-  return s !== -1 && e > s ? text.slice(s, e + 1) : "[]"
+// Parse a JSON array of objects, tolerating a response cut off at max_tokens
+// (an unterminated array) and any markdown/prose wrapper. Scans for balanced,
+// string-aware top-level {...} objects and returns every COMPLETE one — a final
+// half-written object is simply dropped rather than voiding the whole batch.
+function parseObjectArray(text: string): Record<string, unknown>[] {
+  const start = text.indexOf("[")
+  const body = start === -1 ? text : text.slice(start + 1)
+  const out: Record<string, unknown>[] = []
+  let depth = 0
+  let objStart = -1
+  let inStr = false
+  let esc = false
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i]
+    if (inStr) {
+      if (esc) esc = false
+      else if (ch === "\\") esc = true
+      else if (ch === '"') inStr = false
+      continue
+    }
+    if (ch === '"') inStr = true
+    else if (ch === "{") {
+      if (depth === 0) objStart = i
+      depth++
+    } else if (ch === "}") {
+      if (depth > 0 && --depth === 0 && objStart !== -1) {
+        try {
+          const o = JSON.parse(body.slice(objStart, i + 1))
+          if (o && typeof o === "object" && !Array.isArray(o)) out.push(o as Record<string, unknown>)
+        } catch {
+          /* skip a malformed object, keep the rest */
+        }
+        objStart = -1
+      }
+    }
+  }
+  return out
 }
 
 function parseExtractionArray(text: string): ExtractedWine[] {
-  try {
-    const arr = JSON.parse(sliceArray(text))
-    if (!Array.isArray(arr)) return []
-    return arr
-      .filter((w) => w?.name && typeof w.menuPrice === "number" && w.menuPrice > 0)
-      .map((w) => ({
-        name: String(w.name),
-        producer: w.producer != null ? String(w.producer) : null,
-        vintage: w.vintage != null ? Number(w.vintage) || null : null,
-        menuPrice: Number(w.menuPrice),
-        type: (w.type as WineType) ?? "Red",
-        region: String(w.region ?? "Other"),
-      }))
-  } catch {
-    return []
-  }
+  return parseObjectArray(text)
+    .filter((w) => w?.name && typeof w.menuPrice === "number" && w.menuPrice > 0)
+    .map((w) => ({
+      name: String(w.name),
+      producer: w.producer != null ? String(w.producer) : null,
+      vintage: w.vintage != null ? Number(w.vintage) || null : null,
+      menuPrice: Number(w.menuPrice),
+      type: (w.type as WineType) ?? "Red",
+      region: String(w.region ?? "Other"),
+    }))
 }
 
 // Map an enriched element to RawWine — NO fake defaults. Falls back to the
 // extracted wine (with null market data) when the model omits a wine.
 function parseEnrichedArray(text: string, batch: ExtractedWine[]): RawWine[] {
-  let arr: unknown[] = []
-  try {
-    const parsed = JSON.parse(sliceArray(text))
-    if (Array.isArray(parsed)) arr = parsed
-  } catch {
-    /* fall through to bare fallback below */
-  }
+  const arr = parseObjectArray(text)
 
   if (arr.length === 0) return batch.map(rawFromExtracted)
 
